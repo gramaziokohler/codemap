@@ -18,8 +18,9 @@ generated = []      # shown and counted, but left out of duplication and hotspot
 
 # References resolved by compiler-grade indexers (SCIP) instead of matched by name, where the language has one:
 # python (scip-python, on Pyright; a .venv in the root or the folder is used), typescript (scip-typescript; a folder
-# with a tsconfig.json). The setup commands run first in CI (the action's `setup` input, or codemap --setup).
+# with a tsconfig.json), csharp (scip-dotnet, on Roslyn; .csproj or .sln files). The setup commands run first in CI (the action's `setup` input, or codemap --setup).
 [index]
 python = ["."]           # the tool itself is Python: its own check indexes it
 # typescript = ["web"]
+# csharp = ["src/App/App.csproj"]   # projects or solutions, each restored and indexed on its own (scip-dotnet)
 # setup = ["uv sync", "npm ci --prefix web"]

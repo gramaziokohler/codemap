@@ -24,8 +24,10 @@ seeds; nothing is pinned.
   over normalised runs of 60 tokens) are counted on the syntax trees.
 - **References, resolved** where a compiler-grade indexer covers the language (`[index]` in the config): the
   [SCIP](https://github.com/sourcegraph/scip) indexers [scip-python](https://github.com/sourcegraph/scip-python)
-  (Pyright) and [scip-typescript](https://github.com/sourcegraph/scip-typescript) (the TypeScript compiler) record
-  every definition and every reference with the symbol it means. Which file depends on which, which class derives
+  (Pyright), [scip-typescript](https://github.com/sourcegraph/scip-typescript) (the TypeScript compiler) and
+  [scip-dotnet](https://github.com/sourcegraph/scip-dotnet) (Roslyn; each project restored, Windows-only target
+  frameworks allowed, so a Revit add-in indexes on Linux) record every definition and every reference with the
+  symbol it means. Which file depends on which, which class derives
   from or uses which, come from those; nothing is guessed by name.
 - **References, matched by name** elsewhere: imports resolved to files, and names one file defines that another uses
   (only names defined in at most two files). Good hints, not proof: a common name can link the wrong file.
@@ -33,7 +35,7 @@ seeds; nothing is pinned.
 - **Rooms and layout**: Louvain communities and spring layouts (networkx), with fixed seeds and a fixed order.
 
 The page says how much of the code is resolved (overall, per room, a *Resolved* column), so it is always clear which
-numbers rest on the compiler and which on names. C# (scip-dotnet) and C++ (scip-clang) are next.
+numbers rest on the compiler and which on names. C++ (scip-clang) is next.
 
 ## As a GitHub Action
 
@@ -67,7 +69,8 @@ open /tmp/map/index.html
 ```
 
 `uv` reads the dependencies from the script's header (tree-sitter-language-pack, networkx, numpy). With `--index` the
-indexers in `[index]` run through `npx` (Node 18 or newer), on the environments already there; `--setup` runs the
+indexers in `[index]` run through `npx` (Node 18 or newer) and, for C#, `dotnet` (the .NET 8 SDK), on the
+environments already there; `--setup` runs the
 `[index]` setup commands first, as the action does. `--scip PATH[=FOLDER]` reads an index made beforehand.
 
 ## The config

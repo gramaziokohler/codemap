@@ -33,9 +33,12 @@ runs:
   using: composite
   steps:
     - uses: astral-sh/setup-uv@v6
-    - uses: actions/setup-node@v4 # the indexers (scip-python, scip-typescript) run on Node
+    - uses: actions/setup-node@v4 # scip-python and scip-typescript run on Node
       with:
         node-version: 22
+    - uses: actions/setup-dotnet@v4 # scip-dotnet runs on .NET and restores the projects it indexes
+      with:
+        dotnet-version: 8.0.x
     - id: map
       shell: bash
       env:

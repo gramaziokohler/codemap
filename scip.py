@@ -93,8 +93,16 @@ class Index:
     tools: list[str] = field(default_factory=list)
 
 
-def read(data: bytes, prefix: str, into: Index) -> Index:
-    """Add one index to ``into``; ``prefix`` is the indexed project's folder relative to the mapped root."""
+def _scoped(sym: str, scope: str) -> str:
+    """A symbol without a package (scip-dotnet writes `scip-dotnet nuget . . Ns/Type#`) is only unique within its
+    index: such symbols get the index's scope, so two projects defining the same name do not merge."""
+    parts = sym.split(" ", 4)
+    return f"{scope}|{sym}" if scope and len(parts) == 5 and parts[2] == "." else sym
+
+
+def read(data: bytes, prefix: str, into: Index, scope: str = "") -> Index:
+    """Add one index to ``into``; ``prefix`` is the indexed project's folder relative to the mapped root, ``scope``
+    names the index (for symbols that carry no package)."""
     pre = (prefix.strip("/") + "/") if prefix.strip("/. ") else ""
     for num, _, doc in _fields(data):
         if num == 1:
@@ -126,6 +134,7 @@ def read(data: bytes, prefix: str, into: Index) -> Index:
             sym = fs.get(2, [b""])[0].decode()
             if not sym or sym.startswith("local "):
                 continue
+            sym = _scoped(sym, scope)
             rng = _range(fs)
             if rng is None:
                 continue
@@ -141,12 +150,13 @@ def read(data: bytes, prefix: str, into: Index) -> Index:
             sym = d.get(1, [b""])[0].decode()
             if not sym or sym.startswith("local "):
                 continue
+            sym = _scoped(sym, scope)
             if 5 in d:
                 into.kind[sym] = d[5][0]
             for rel in d.get(4, []):
                 r = dict((n, v) for n, _, v in _fields(rel))
                 if r.get(3) and r.get(1):
-                    into.impl.setdefault(sym, set()).add(r[1].decode())
+                    into.impl.setdefault(sym, set()).add(_scoped(r[1].decode(), scope))
     return into
 
 
@@ -158,6 +168,10 @@ _DESC = re.compile(r"`[^`]*`|[^/#.()\[\]`:!]+|[/#.()\[\]:!]")
 def owner_type(symbol: str) -> str | None:
     """The type a symbol belongs to, or is (`pkg/Foo#bar().` and `pkg/Foo#` -> `pkg/Foo#`), else None."""
     depth = 0
+    if "|" in symbol.split(" ", 1)[0]:  # a scope in front: keep it
+        scope, _, rest = symbol.partition("|")
+        t = owner_type(rest)
+        return f"{scope}|{t}" if t else None
     for i, c in enumerate(symbol):
         if c == "`":
             depth ^= 1

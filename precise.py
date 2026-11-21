@@ -6,6 +6,7 @@ which. Files no index covers keep the name-based heuristic; the map says how muc
     [index]
     python = ["."]            # folders to index with scip-python (a .venv in the root or the folder is used)
     typescript = ["web"]      # folders with a tsconfig.json
+    csharp = ["src/App/App.csproj"]   # projects or solutions, each restored and indexed on its own (scip-dotnet)
     setup = ["uv sync --all-packages", "npm ci --prefix web"]   # run first with --setup (as in CI)
 """
 
@@ -26,8 +27,8 @@ import scip
 INDEXERS = {  # pinned: the same map from the same code
     "python": "@sourcegraph/scip-python@0.6.8",
     "typescript": "@sourcegraph/scip-typescript@0.6.1",
+    "csharp": "scip-dotnet@0.2.16",  # a .NET tool (Roslyn); needs the .NET SDK
 }
-LANGS_OF = {"python": {"python"}, "typescript": {"typescript", "tsx", "javascript"}}
 
 
 def _log(msg: str) -> None:
@@ -64,11 +65,20 @@ def run(root: Path, cfg: dict, setup: bool) -> tuple[scip.Index | None, list[str
         for n, (lang, d) in enumerate(jobs):
             folder = (root / d).resolve()
             out = Path(tmp) / f"{lang}-{n}.scip"
+            if lang == "csharp":
+                ok = _csharp(root, folder, out, Path(tmp), notes, d)
+                if ok:
+                    scip.read(out.read_bytes(), ".", ix, scope=f"{lang}-{n}")
+                continue
+            inferred = None
             if lang == "python":
                 name = folder.name if folder != root else root.name
                 cmd = ["npx", "-y", INDEXERS[lang], "index", "--project-name", name, "--output", str(out)]
-            else:
+            else:  # plain JavaScript without a tsconfig.json: the indexer infers one
                 cmd = ["npx", "-y", INDEXERS[lang], "index", "--output", str(out)]
+                if not (folder / "tsconfig.json").exists():
+                    cmd.append("--infer-tsconfig")
+                    inferred = folder / "tsconfig.json"  # written by the indexer: removed again below
             _log(f"indexing {d} ({lang}): {shlex.join(cmd)}")
             t0 = time.time()
             try:
@@ -78,6 +88,9 @@ def run(root: Path, cfg: dict, setup: bool) -> tuple[scip.Index | None, list[str
             except (OSError, subprocess.TimeoutExpired) as e:
                 notes.append(f"{lang} index of {d} failed ({e.__class__.__name__}): names used there")
                 continue
+            finally:
+                if inferred is not None and inferred.exists():
+                    inferred.unlink()
             if r.returncode or not out.exists():
                 tail = (r.stderr or r.stdout).strip().splitlines()[-3:]
                 _log(f"{lang} indexer failed in {d}: " + " | ".join(tail))
@@ -88,12 +101,70 @@ def run(root: Path, cfg: dict, setup: bool) -> tuple[scip.Index | None, list[str
     return (ix if ix.files else None), notes
 
 
+def _csharp(root: Path, project: Path, out: Path, tmp: Path, notes: list[str], d: str) -> bool:
+    """Restore one .NET project (or solution) and index it with scip-dotnet; Windows-only target frameworks are
+    allowed (EnableWindowsTargeting), so a Revit add-in restores on Linux."""
+    name, version = INDEXERS["csharp"].split("@")
+    tools = tmp / "dotnet-tools"
+    env = dict(os.environ, EnableWindowsTargeting="true", DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1")
+    exe = tools / name
+    try:
+        if not exe.exists():
+            subprocess.run(
+                ["dotnet", "tool", "install", name, "--version", version, "--tool-path", str(tools)],
+                env=env,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=900,
+            )
+        _log(f"indexing {d} (csharp): dotnet restore, {name} index")
+        t0 = time.time()
+        subprocess.run(
+            ["dotnet", "restore", str(project)],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=1800,
+        )
+        r = subprocess.run(
+            [
+                str(exe),
+                "index",
+                str(project),
+                "--skip-dotnet-restore",
+                "--working-directory",
+                str(root),
+                "--output",
+                str(out),
+            ],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=3600,
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        detail = getattr(e, "stderr", "") or getattr(e, "stdout", "") or str(e)
+        _log(f"csharp index of {d} failed: " + " | ".join(str(detail).strip().splitlines()[-3:]))
+        notes.append(f"csharp index of {d} failed: names used there")
+        return False
+    if r.returncode or not out.exists():
+        _log(f"csharp indexer failed in {d}: " + " | ".join((r.stderr or r.stdout).strip().splitlines()[-3:]))
+        notes.append(f"csharp index of {d} failed: names used there")
+        return False
+    _log(f"indexed {d} (csharp) in {time.time() - t0:.0f} s")
+    return True
+
+
 def read_files(specs: list[str]) -> scip.Index | None:
     """Indexes made beforehand: PATH or PATH=FOLDER (the folder it was made in, relative to the root)."""
     ix = scip.Index()
-    for spec in specs:
+    for n, spec in enumerate(specs):
         path, _, prefix = spec.partition("=")
-        scip.read(Path(path).read_bytes(), prefix or ".", ix)
+        scip.read(Path(path).read_bytes(), prefix or ".", ix, scope=f"file-{n}")
     return ix if ix.files else None
 
 
