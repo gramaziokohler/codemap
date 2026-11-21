@@ -17,6 +17,24 @@ serve.
 Languages: Python, C#, C++, TypeScript, JavaScript (tree-sitter). Everything is derived anew on each run, with fixed
 seeds; nothing is pinned.
 
+## What the analysis rests on
+
+- **Syntax** (every language): [tree-sitter](https://tree-sitter.github.io) parses each file; size, functions,
+  complexity (McCabe: decisions per function), parameters, magic values, swallowed errors and clones (a rolling hash
+  over normalised runs of 60 tokens) are counted on the syntax trees.
+- **References, resolved** where a compiler-grade indexer covers the language (`[index]` in the config): the
+  [SCIP](https://github.com/sourcegraph/scip) indexers [scip-python](https://github.com/sourcegraph/scip-python)
+  (Pyright) and [scip-typescript](https://github.com/sourcegraph/scip-typescript) (the TypeScript compiler) record
+  every definition and every reference with the symbol it means. Which file depends on which, which class derives
+  from or uses which, come from those; nothing is guessed by name.
+- **References, matched by name** elsewhere: imports resolved to files, and names one file defines that another uses
+  (only names defined in at most two files). Good hints, not proof: a common name can link the wrong file.
+- **History**: `git log` for recent changes, what changes together (co-change) and hotspots.
+- **Rooms and layout**: Louvain communities and spring layouts (networkx), with fixed seeds and a fixed order.
+
+The page says how much of the code is resolved (overall, per room, a *Resolved* column), so it is always clear which
+numbers rest on the compiler and which on names. C# (scip-dotnet) and C++ (scip-clang) are next.
+
 ## As a GitHub Action
 
 ```yaml
@@ -38,7 +56,8 @@ jobs:
 ```
 
 Inputs: `config` (default `codemap.toml`), `root` (default `.`), `out` (default `codemap`), `json` (optional, the
-model as JSON). Output: `page`, the path of `index.html`.
+model as JSON), `index` (default `true`: run the indexers in `[index]`), `setup` (default `true`: run the `[index]`
+setup commands first). Output: `page`, the path of `index.html`.
 
 ## Locally
 
@@ -47,13 +66,15 @@ uv run codemap.py --config path/to/codemap.toml --root path/to/repo --out /tmp/m
 open /tmp/map/index.html
 ```
 
-`uv` reads the dependencies from the script's header (tree-sitter-language-pack, networkx, numpy).
+`uv` reads the dependencies from the script's header (tree-sitter-language-pack, networkx, numpy). With `--index` the
+indexers in `[index]` run through `npx` (Node 18 or newer), on the environments already there; `--setup` runs the
+`[index]` setup commands first, as the action does. `--scip PATH[=FOLDER]` reads an index made beforehand.
 
 ## The config
 
 See [examples/codemap.toml](examples/codemap.toml): `title`, `rooms` (how many to aim for), `include` and `exclude`
-(globs), `generated` (counted, not judged), `[anchors]` (pull a component toward a side) and `[tiers]` (a file's
-tier by hand).
+(globs), `generated` (counted, not judged), `[anchors]` (pull a component toward a side), `[tiers]` (a file's
+tier by hand) and `[index]` (which folders to index, and how to set them up).
 
 ## Vendored
 

@@ -15,3 +15,11 @@ generated = []      # shown and counted, but left out of duplication and hotspot
 # Tiers: presentation, application, domain, data, integration.
 [tiers]
 # "src/app/store/*.py" = "data"
+
+# References resolved by compiler-grade indexers (SCIP) instead of matched by name, where the language has one:
+# python (scip-python, on Pyright; a .venv in the root or the folder is used), typescript (scip-typescript; a folder
+# with a tsconfig.json). The setup commands run first in CI (the action's `setup` input, or codemap --setup).
+[index]
+python = ["."]           # the tool itself is Python: its own check indexes it
+# typescript = ["web"]
+# setup = ["uv sync", "npm ci --prefix web"]

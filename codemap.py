@@ -27,13 +27,14 @@ import re
 import subprocess
 import sys
 import time
+import tomllib
 from collections import Counter, defaultdict
 from pathlib import Path
 
 import networkx as nx
-import tomllib
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import precise  # noqa: E402
 from extract import FileRecord, read  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -343,12 +344,12 @@ def is_test(path: str) -> bool:
 
 
 def graph(files: list[str], deps, co) -> nx.Graph:
-    g = nx.Graph()
-    g.add_nodes_from(files)
-    for (a, b), w in deps.items():
+    g = nx.Graph()  # built in a fixed order: Louvain depends on it, and set order changes from run to run
+    g.add_nodes_from(sorted(files))
+    for (a, b), w in sorted(deps.items()):
         if a in g and b in g:
             g.add_edge(a, b, weight=g.get_edge_data(a, b, {}).get("weight", 0) + min(w, 6))
-    for (a, b), w in co.items():
+    for (a, b), w in sorted(co.items()):
         if a in g and b in g:
             g.add_edge(a, b, weight=g.get_edge_data(a, b, {}).get("weight", 0) + 0.6 * w)
     # a prior: files of one folder, and less so of one component, belong together unless the code says otherwise
@@ -374,10 +375,10 @@ def derive_rooms(g: nx.Graph, target: int) -> list[set[str]]:
         score = abs(sum(1 for c in comms if len(c) >= 3) - target)
         if best is None or score < best[0]:
             best = (score, comms)
-    comms = sorted(best[1], key=len, reverse=True)
+    comms = sorted(best[1], key=lambda c: (-len(c), min(c)))
     rooms = [c for c in comms if len(c) >= 3] or comms[:1]
     for small in (c for c in comms if len(c) < 3 and c not in rooms):
-        for f in small:
+        for f in sorted(small):
             ties = Counter()
             for n, d in g[f].items():
                 for i, r in enumerate(rooms):
@@ -840,16 +841,41 @@ def metrics(root, cfg, recs, texts, member, rooms, tiers, deps, co, recent, last
     return files_out, room_out, links, clone_links, cyc
 
 
-def class_model(recs, files_out) -> dict:
-    """Per room: its classes (and module-level function counts), inheritance and use edges between them."""
+def class_model(recs, files_out, exact: dict | None = None) -> dict:
+    """Per room: its classes (and module-level function counts), inheritance and use edges between them. For a file
+    an index covers (``exact``, from precise.classes) the bases and uses are resolved symbols; elsewhere names."""
     out: dict[str, dict] = defaultdict(lambda: {"classes": [], "edges": []})
     owner: dict[str, tuple[str, str]] = {}
     for p, r in recs.items():
         for k in r.classes:
             owner.setdefault(k.name, (p, files_out[p]["room"]))
+    exact = exact or {}
     for p, r in recs.items():
         room = files_out[p]["room"]
         if room is None:
+            continue
+        if p in exact:
+            for k in r.classes:
+                out[room]["classes"].append(
+                    {
+                        "name": k.name,
+                        "file": p,
+                        "line": k.line,
+                        "lines": k.lines,
+                        "bases": k.bases,
+                        "methods": k.methods,
+                        "fields": k.fields,
+                        "exact": True,
+                    }
+                )
+                rel = exact[p].get(k.name, {"bases": [], "uses": set()})
+                for name, f in rel["bases"]:
+                    out[room]["edges"].append({"from": k.name, "to": name, "kind": "inherits"})
+                    if files_out[f]["room"] != room:
+                        out[room].setdefault("ext", {})[name] = files_out[f]["room"]
+                for name, f in sorted(rel["uses"]):
+                    if files_out[f]["room"] == room:
+                        out[room]["edges"].append({"from": k.name, "to": name, "kind": "uses"})
             continue
         for k in r.classes:
             out[room]["classes"].append(
@@ -978,6 +1004,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", help="also write the model as JSON here")
     ap.add_argument("--root", help="the repository to map (default: the one holding the config)")
     ap.add_argument("--out", help="folder for index.html (default: the config's folder)")
+    ap.add_argument("--index", action="store_true", help="resolve references with the indexers in [index]")
+    ap.add_argument("--setup", action="store_true", help="with --index: run [index] setup first (as in CI)")
+    ap.add_argument("--scip", action="append", default=[], help="a SCIP index made beforehand: PATH or PATH=FOLDER")
     args = ap.parse_args(argv)
     cfg_path = Path(args.config).resolve()
     root = Path(git(Path(args.root).resolve() if args.root else cfg_path.parent, "rev-parse", "--show-toplevel"))
@@ -987,6 +1016,13 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.time()
     recs, texts = read_all(root, cfg)
     deps = dependencies(recs)
+    ix, index_notes = precise.run(root, cfg, args.setup) if args.index else (None, [])
+    if args.scip:
+        ix = precise.read_files(args.scip)
+    cov = precise.covered(recs, ix)
+    exact = precise.classes(recs, ix) if ix else {}
+    if ix:
+        deps = precise.dependencies(recs, ix, deps)
     co, recent, last = cochange(root, set(recs))
     share, clone_pairs, clone_where = clones(
         {p: r for p, r in recs.items() if not any(fnmatch.fnmatch(p, g) for g in cfg["generated"])}
@@ -998,7 +1034,9 @@ def main(argv: list[str] | None = None) -> int:
     place(rooms, {k: v["weight"] for k, v in room_links(member, deps, co).items()}, cpos, scale)
     place_folders(frooms, cpos)
     normalise(rooms, frooms)
-    notes = [f"{len(cfg.get('anchors', {}))} anchoring hints"]
+    notes = [f"{len(cfg.get('anchors', {}))} anchoring hints", *index_notes]
+    total = sum(r.loc for r in recs.values()) or 1
+    resolved = round(sum(recs[p].loc for p in cov) / total, 3)
     args_m = (recent, last, share, clone_pairs, clone_where)
     files_out, room_out, links, clone_links, cycles = metrics(
         root, cfg, recs, texts, member, rooms, tiers, deps, co, *args_m
@@ -1009,6 +1047,10 @@ def main(argv: list[str] | None = None) -> int:
     for p, f in files_out.items():
         f["folder"] = fmember.get(p)
         f["comp"] = component(p)
+        f["resolved"] = p in cov
+    for ro in (*room_out.values(), *froom_out.values()):  # the share of a room's code whose references are resolved
+        loc = sum(recs[p].loc for p in ro["files"]) or 1
+        ro["resolved"] = round(sum(recs[p].loc for p in ro["files"] if p in cov) / loc, 2)
     for rid, r in froom_out.items():
         r["comp"] = frooms[rid]["comp"]
     fitted = fit(files_out, deps, room_out, froom_out)
@@ -1019,7 +1061,7 @@ def main(argv: list[str] | None = None) -> int:
             "links": [{"a": a, "b": b, **v} for (a, b), v in ls.items()],
             "clones": [{"a": a, "b": b, "n": n} for (a, b), n in cl.items()],
             "cycles": [sorted(c) for c in cy],
-            "classes": class_model(recs, fs),
+            "classes": class_model(recs, fs, exact),
         }
 
     model = {
@@ -1033,6 +1075,7 @@ def main(argv: list[str] | None = None) -> int:
             "folder": view(froom_out, flinks, fclone_links, fcycles, ffiles),
         },
         "fit": fitted,
+        "precision": {"resolved": resolved, "tools": sorted(set(ix.tools)) if ix else []},
         "files": files_out,
         "layers": LAYERS,
         "tiers": [{"id": tid, "label": label, "about": about} for tid, label, about, _ in TIERS],
@@ -1051,7 +1094,7 @@ def main(argv: list[str] | None = None) -> int:
     loc = sum(r.loc for r in recs.values())
     print(
         f"codemap: {len(recs)} files, {loc} lines, {len(room_out)} rooms, {len(froom_out)} folders, "
-        f"agreement {fitted['agreement']}, {len(links)} links "
+        f"agreement {fitted['agreement']}, {len(links)} links, {100 * resolved:.0f}% resolved "
         f"in {time.time() - t0:.1f} s -> {out_dir / 'index.html'}"
     )
     for n in notes:

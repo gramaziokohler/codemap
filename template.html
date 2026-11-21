@@ -195,7 +195,8 @@ const fmt = (n) => n >= 10000 ? (n / 1000).toFixed(0) + "k" : n >= 1000 ? (n / 1
 const pct = (x) => (100 * x).toFixed(x < 0.1 ? 1 : 0) + "%";
 // two views of the same files: rooms derived from what the code does ("room"), and rooms as the folders have them
 // ("folder"); a file is in one of each (FILES[p].room, FILES[p].folder)
-const VIEWS = DATA.views, FILES = DATA.files, FIT = DATA.fit;
+const VIEWS = DATA.views, FILES = DATA.files, FIT = DATA.fit, PREC = DATA.precision || { resolved: 0, tools: [] };
+const precisionLine = () => PREC.tools.length ? `references resolved for ${pct(PREC.resolved)} of the code (${PREC.tools.join(", ")}); the rest matched by name` : "references matched by name (no indexer configured: [index] in the config)";
 const ALL_ROOMS = [...Object.values(VIEWS.room.rooms), ...Object.values(VIEWS.folder.rooms)];
 const TIERS = DATA.tiers.filter((t) => ALL_ROOMS.some((r) => r.tier === t.id));
 const TIER_IX = Object.fromEntries(TIERS.map((t, i) => [t.id, i]));
@@ -739,6 +740,7 @@ canvas.addEventListener("pointermove", (e) => {
   tip.innerHTML = `<b>${esc(r.name)}</b><span class="k">${tier} · ${esc(r.path)}</span><br>
     ${r.files.length} files · ${fmt(r.loc)} loc · complexity avg ${r.cx_avg}, max ${r.cx_max}<br>
     duplicated ${pct(r.dup)} · ${r.magic_n} magic values · ${r.swallowed_n} swallowed errors<br>
+    references ${PREC.tools.length ? `resolved for ${pct(r.resolved || 0)} of its code` : "matched by name"}<br>
     depends on ${r.ce} rooms · ${r.ca} depend on it${r.cycle != null ? ' · <span class="flag">in a cycle</span>' : ""}`;
   tip.style.display = "block"; tip.style.left = e.clientX + 16 + "px"; tip.style.top = e.clientY + 12 + "px";
 });
@@ -816,6 +818,7 @@ function overview() {
   $("#panel").innerHTML = `<div class="eyebrow">Overview · ${GROUP_NAME[grouping].toLowerCase()}</div><h2>${IDS.length} ${grouping === "room" ? "rooms" : "folders"} on ${TIERS.length} tiers, ${fmt(tot)} lines</h2>
     <div class="path">${DATA.generated} · ${esc(DATA.notes.join("; "))}</div>
     ${sec("01", "Tiers", `<div class="rows">${perTier}</div>`)}
+    <div class="empty" style="margin-top:6px">${precisionLine()}</div>
     ${sec("02", "Folders vs rooms", fitSection())}
     ${sec("03", "Look here first: hotspots", '<div class="empty">changed often in the last 30 days × complex</div>' + worst("hotspot"))}
     ${sec("04", "Most duplicated", worst("dup", pct))}
@@ -871,7 +874,7 @@ function select(rid) {
     <div class="sec"><div class="kv">
       ${kv("lines of code", fmt(r.loc))}${kv("files", r.files.length)}${kv("functions", r.functions)}
       ${kv("complexity avg", r.cx_avg)}${kv("complexity max", r.cx_max, r.cx_max >= 30)}${kv("duplicated", pct(r.dup), r.dup > 0.05)}
-      ${kv("magic / kLOC", r.magic_kloc, r.magic_kloc > 50)}${kv("swallowed", r.swallowed_n, r.swallowed_n > 5)}${kv("instability", r.instability ?? "—")}
+      ${kv("magic / kLOC", r.magic_kloc, r.magic_kloc > 50)}${kv("swallowed", r.swallowed_n, r.swallowed_n > 5)}${kv("instability", r.instability ?? "—")}${kv("resolved", PREC.tools.length ? pct(r.resolved || 0) : "—", PREC.tools.length && (r.resolved || 0) < 0.5)}
     </div></div>
     ${sec("01", grouping === "room" ? "Its files, by folder" : "Its files, by room", partsOf(rid))}
     ${sec("02", "Strata: the files, top to bottom", `<div class="rows">${files.slice(0, 40).map((f) => `<div class="r"><span title="${esc(f.path)}">${esc(f.path.split("/").pop())}<span class="chip">${LANG_NAME[f.lang] || f.lang}</span>${f.dup > 0.05 ? `<span class="chip flag">${pct(f.dup)} dup</span>` : ""}<div class="bar"><i style="width:${100 * f.loc / maxLocF}%;background:${stratumColor(f)}"></i></div></span><span class="m">${f.loc}</span></div>`).join("")}</div>`)}
@@ -909,7 +912,7 @@ async function openClasses(rid) {
   const r = ROOMS[rid], run = ++diagramRun;
   const m = V.classes[rid];
   $("#m-title").textContent = r.name;
-  $("#m-path").textContent = `${TIERS[TIER_IX[r.tier]].label} · ${r.path}`;
+  $("#m-path").textContent = `${TIERS[TIER_IX[r.tier]].label} · ${r.path} · ${m && m.classes.some((c) => c.exact) ? (m.classes.every((c) => c.exact) ? "bases and uses resolved by the indexer" : "bases and uses partly resolved, partly by name") : "bases and uses matched by name"}`;
   $("#modal").classList.add("open");
   const body = $("#m-body");
   if (!m || !m.classes.length) { body.innerHTML = '<div class="empty" style="padding:22px">no classes: functions only</div>'; return; }
@@ -1186,6 +1189,7 @@ const COLS = [
   ["distance", "D", "distance from the main sequence |A + I − 1|: high = rigid concrete code many depend on, or abstractions nobody uses", 1],
   ["mutual", "Mutual", "rooms this one depends on that also depend on it: neither can change alone", 1],
   ["fit", "Fit", "share of the room's code in its biggest counterpart: in one folder (by dependencies), in one room (by folders); low = the folders and the code disagree here", -1],
+  ["resolved", "Resolved", "share of the room's code whose references a compiler-grade indexer resolved (SCIP); the rest is matched by name", 0],
   ["violations_n", "Violations", "files that mix concerns their layer should not carry (domain code that stores or talks to the network, UI that stores data)", 1],
   ["churn", "Churn", "commits touching the room in the last 30 days", 1],
   ["hotspot", "Hotspot", "churn × total complexity / 100: changed often and hard to read — review first", 1],
@@ -1213,7 +1217,7 @@ function table() {
       const [lo, hi] = ranges[k] || [0, 1];
       const t = hi > lo ? (v - lo) / (hi - lo) : 0;
       const shown = k === "dup" ? pct(v) : k === "loc" ? fmt(v) : k === "hotspot" ? fmt(Math.round(v)) : v;
-      const heat = dir === -1 ? 1 - t : t, shownF = k === "fit" ? pct(v) : shown;
+      const heat = dir === -1 ? 1 - t : t, shownF = k === "fit" || k === "resolved" ? pct(v) : shown;
       return `<td style="background:${dir ? warm(heat * 0.95) : "transparent"};color:${dir && heat > 0.62 ? "#fff" : "inherit"}">${shownF}</td>`;
     }).join("")}</tr>`;
   }).join("")}</tbody>`;
@@ -1237,6 +1241,7 @@ $("#notes").innerHTML = `
 <p><b>Why these.</b> Much of this code was written by AI faster than it can be reviewed. The map does not judge the code; it points at where a reviewer's hour is best spent.</p>
 <p><b>Tiers</b> are detected, not declared: a file that draws UI is presentation; one that serves or calls HTTP, or is a command line, is application; one that uses a database or the file system is data; one that drives another program's API (a CAD host, an IFC toolkit) is integration; the rest is domain. Where the code shows nothing, the path can (a <code>store</code>, a <code>server</code>, a <code>views/</code> folder). A room never spans two tiers, so a component (a folder) appears on every platform it has code on, at the same spot.</p>
 <p><b>Hotspots</b> first: code that changes often and is complex is where bugs live (Tornhill). <b>Swallowed errors</b> hide failures. <b>Magic values</b> are decisions nobody named. <b>Duplication</b> is the same logic in several places, which drifts apart.</p>
+<p><b>Dependencies</b> between files are <i>resolved</i> where an indexer covers the language (SCIP: scip-python on Pyright, scip-typescript on the TypeScript compiler): every reference points to the definition it means. Elsewhere they are <i>matched by name</i>: imports resolved to files, and names one file defines that another uses, which can link the wrong file. The <i>Resolved</i> column and each room say which.</p>
 <p><b>Coupling</b>: Ce and Ca count rooms, not references. A room many depend on (low I) should be stable and abstract; <b>D</b> measures how far it is from that. <b>Cycles</b> mean none of the rooms in them can change alone. Changing together without referencing each other (dots in the matrix) is hidden coupling.</p>
 <p><b>Folders vs rooms</b>: the folders are how people filed the code; the rooms are what the code does. Where they agree, the structure holds. A folder split across rooms may be doing two jobs; a room gathering folders may be a module nobody named; a file whose dependencies all live in another folder may be in the wrong place. The <i>agreement</i> is the normalised mutual information of the two groupings (by lines of code), the <i>Fit</i> column the share of a room's code in its biggest counterpart.</p>
 <p><b>Layout</b>: derived anew on every run (fixed seeds, so it stays the same while the code does); <code>[anchors]</code> in the config (<code>codemap.toml</code>) pull a component toward a side. What is mapped is set by <code>include</code> and <code>exclude</code> in the config.</p>`;
