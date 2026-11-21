@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code map</title>
+<style>
+:root {
+  --ink: #303038; --ink-2: #5d5660; --muted: #89838b; --line: #d8d3cc; --paper: #f7f5ef; --card: #fffdf8;
+  --orange: #ee7138; --orange-2: #c2432b; --lav: #8f8bb3;
+  --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 var(--sans); color: var(--ink); background: #e7baa8; }
+a { color: inherit; }
+.stage {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 420px; height: 100vh;
+  background:
+    radial-gradient(ellipse at 15% 13%, #dc9687 0, transparent 56%),
+    radial-gradient(ellipse at 2% 66%, #efd1a2 0, transparent 54%),
+    radial-gradient(ellipse at 84% 83%, #b5b0cd 0, transparent 64%),
+    linear-gradient(125deg, #dfab9b, #e5c7b8 55%, #b2b2cb);
+}
+.world { position: relative; min-width: 0; overflow: hidden; }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.labels div { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; text-align: center; }
+.labels .room { font: 600 13px var(--sans); color: var(--ink); text-shadow: 0 0 3px #fbf8f3, 0 0 3px #fbf8f3, 0 0 6px #fbf8f3; }
+.labels .room small { display: block; font: 10px var(--mono); color: var(--ink-2); }
+.labels .wing { font: 600 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--c); transform: none; text-shadow: 0 0 3px #fbf8f3, 0 0 3px #fbf8f3; }
+.labels.moving { opacity: .25; transition: opacity .2s; }
+.compo { display: flex; height: 9px; border-radius: 3px; overflow: hidden; margin: 6px 0 4px; }
+.compo i { display: block; height: 100%; border-right: 1px solid #fffdf8; }
+.fitnum { display: flex; gap: 18px; align-items: baseline; margin: 2px 0 8px; }
+.fitnum b { font: 600 26px var(--sans); letter-spacing: -.02em; color: var(--ink); }
+.fitnum span { font: 11px var(--mono); color: var(--muted); }
+.sub-h { font: 600 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); margin: 12px 0 2px; }
+.labels .tier { font: 600 10.5px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink); background: #fffdf8e6; border-left: 4px solid var(--c); padding: 3px 8px; border-radius: 3px; transform: none; }
+.cut { position: absolute; right: 18px; top: 64px; width: 132px; padding: 10px 10px 10px 12px; background: #fffdf8d9; border: 1px solid #0000000f; border-radius: 12px; backdrop-filter: blur(6px); box-shadow: 0 6px 24px #0001; user-select: none; z-index: 3; }
+.cut .ttl { font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 6px; }
+.cut .track { position: relative; padding-left: 18px; cursor: ns-resize; touch-action: none; }
+.cut .track::before { content: ""; position: absolute; left: 6px; top: 10px; bottom: 10px; width: 2px; background: var(--line); border-radius: 1px; }
+.cut .stop { position: relative; display: block; width: 100%; text-align: left; border: 0; background: none; padding: 4px 0; font: 500 12px var(--sans); color: var(--ink-2); cursor: pointer; }
+.cut .stop::before { content: ""; position: absolute; left: -16px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--c, #b9b1aa); border: 2px solid #fffdf8; }
+.cut .stop.below { color: var(--muted); }
+.cut .stop[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
+.cut .stop[aria-pressed="true"]::before { width: 12px; height: 12px; margin-top: -6px; left: -18px; box-shadow: 0 0 0 2px var(--orange); }
+.cut.off { opacity: .45; pointer-events: none; }
+.cut .note { font: 10.5px/1.35 var(--sans); color: var(--muted); margin-top: 6px; }
+.hud { position: absolute; left: 24px; top: 20px; right: 170px; pointer-events: none; z-index: 2; }
+.hud > * { pointer-events: auto; }
+.eyebrow { font: 11px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); }
+h1 { font-weight: 600; font-size: 28px; letter-spacing: -.02em; margin: 6px 0 10px; color: #fff; text-shadow: 0 1px 12px #c0705a55; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.controls .grp { display: inline-flex; align-items: center; gap: 10px; }
+.controls .lbl { font: 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); margin-right: -6px; }
+.tabs { display: inline-flex; gap: 3px; padding: 3px; border-radius: 9px; background: #ffffff40; backdrop-filter: blur(6px); }
+.tabs button { border: 0; background: none; padding: 5px 11px; border-radius: 6px; color: var(--ink-2); font: 500 12px var(--sans); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: #fff6ee; color: var(--ink); box-shadow: 0 1px 2px #0001; }
+.legend { position: absolute; left: 24px; bottom: 18px; max-width: 520px; background: #fffdf8e6; border: 1px solid #0000000f; border-radius: 10px; padding: 10px 12px; font: 11px/1.5 var(--sans); color: var(--ink-2); box-shadow: 0 6px 24px #0001; }
+.legend b { color: var(--ink); }
+.legend .scale { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 6px; font: 11px var(--mono); }
+.legend .ramp { display: inline-block; width: 120px; height: 9px; border-radius: 2px; vertical-align: -1px; margin: 0 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+.legend .sym { display: flex; flex-wrap: wrap; gap: 2px 12px; font: 11px var(--mono); }
+.legend summary { cursor: pointer; font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); }
+.help-btn { position: absolute; right: 18px; top: 18px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #0000001a; background: #fffdf8cc; color: var(--ink-2); font: 600 14px var(--sans); cursor: pointer; backdrop-filter: blur(6px); }
+.help-btn:hover, .help-btn[aria-expanded="true"] { color: var(--ink); border-color: var(--orange); }
+.help { position: absolute; right: 160px; top: 18px; width: min(440px, calc(100% - 36px)); max-height: calc(100% - 90px); overflow: auto; background: #fffdf8f5; border: 1px solid #0000000f; border-radius: 12px; padding: 14px 16px; font: 12.5px/1.55 var(--sans); color: var(--ink-2); box-shadow: 0 12px 40px #0002; display: none; z-index: 4; }
+.help.open { display: block; }
+.help p { margin: 0 0 9px; }
+.help b { color: var(--ink); }
+.hint { position: absolute; right: 18px; bottom: 14px; font: 11px var(--mono); color: var(--ink-2); }
+.tip { position: fixed; pointer-events: none; background: #fffdf8f2; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: 12px var(--sans); box-shadow: 0 6px 24px #0002; max-width: 340px; display: none; z-index: 5; }
+.tip b { display: block; margin-bottom: 2px; }
+.tip .k { font: 11px var(--mono); color: var(--muted); }
+
+.panel { background: var(--paper); border-left: 1px solid #0000000d; padding: 24px 24px 40px; overflow: auto; height: 100vh; }
+.panel h2 { font-size: 20px; margin: 4px 0 2px; letter-spacing: -.01em; }
+.panel .path { font: 12px var(--mono); color: var(--muted); word-break: break-all; }
+.btn { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 6px 10px; font: 500 12px var(--sans); cursor: pointer; color: var(--ink); }
+.btn:hover { border-color: var(--orange); }
+.sec { margin-top: 22px; }
+.sec > .h { display: flex; gap: 10px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 8px; }
+.sec > .h .n { font: 11px var(--mono); color: var(--muted); }
+.sec > .h .t { font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; }
+.kv div { font: 11px var(--mono); color: var(--muted); }
+.kv b { display: block; font: 600 18px var(--sans); color: var(--ink); letter-spacing: -.01em; }
+.kv b.bad { color: var(--orange-2); }
+.rows { font: 12px var(--mono); }
+.rows .r { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 4px 0; border-bottom: 1px dashed #0000000f; align-items: center; }
+.rows .r span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rows .r .m { color: var(--muted); }
+.bar { height: 5px; border-radius: 2px; background: var(--line); margin-top: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; }
+.chip { display: inline-block; font: 10px var(--mono); padding: 1px 6px; border-radius: 9px; background: #0000000d; color: var(--ink-2); margin-left: 4px; }
+.flag { color: var(--orange-2); }
+.empty { color: var(--muted); font: 12px var(--mono); }
+
+.modal { position: fixed; inset: 0; background: #2a262f88; display: none; z-index: 10; align-items: center; justify-content: center; }
+.modal.open { display: flex; }
+.modal .box { width: 94vw; height: 90vh; background: var(--paper); border-radius: 14px; box-shadow: 0 30px 80px #0005; display: flex; flex-direction: column; overflow: hidden; }
+.modal .bar { display: flex; align-items: baseline; gap: 14px; padding: 16px 22px; border-bottom: 1px solid var(--line); height: auto; background: none; margin: 0; border-radius: 0; overflow: visible; }
+.modal .bar h3 { margin: 0; font-size: 20px; }
+.modal .bar .path { font: 12px var(--mono); color: var(--muted); flex: 1; }
+.modal .body { flex: 1; overflow: hidden; position: relative; background: radial-gradient(circle, #0000000d 1px, transparent 1.2px) 0 0 / 22px 22px, var(--paper); }
+.modal svg.diagram { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; user-select: none; }
+.modal svg.diagram.grabbing { cursor: grabbing; }
+.modal svg.diagram g.lit > rect:first-child { stroke: #ee7138; stroke-width: 2.5; }
+.modal .zoom { display: flex; gap: 4px; align-items: center; }
+.modal .zoom .btn { padding: 4px 9px; }
+.modal .zoom .zl { font: 11px var(--mono); color: var(--muted); min-width: 40px; text-align: center; }
+.m-hint { position: absolute; left: 14px; bottom: 10px; font: 11px var(--mono); color: var(--muted); background: #f7f5efd9; padding: 3px 8px; border-radius: 6px; pointer-events: none; }
+
+.below { background: var(--paper); padding: 28px 36px 60px; }
+.below h3 { margin: 0 0 4px; font-size: 18px; }
+.below .sub { color: var(--muted); font: 12px var(--mono); margin-bottom: 12px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; font: 12px var(--mono); }
+th { text-align: right; font-weight: 500; color: var(--muted); padding: 10px 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--card); }
+th:first-child, td:first-child { text-align: left; }
+th[data-sorted]::after { content: " ↓"; }
+th[data-sorted="asc"]::after { content: " ↑"; }
+th abbr { text-decoration: none; border-bottom: 1px dotted var(--muted); }
+td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #0000000a; white-space: nowrap; }
+tr:hover td { background: #ee71380d; }
+tr.sel td { background: #ee71381c; }
+td.room { font: 500 13px var(--sans); cursor: pointer; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; margin-top: 28px; }
+@media (max-width: 1100px) { .stage { grid-template-columns: 1fr; height: auto; } .world { height: 80vh; } .panel { height: auto; } .grid2 { grid-template-columns: 1fr; } }
+.matrix td { padding: 0; width: 22px; height: 22px; border: 1px solid #fff; }
+.notes { color: var(--ink-2); max-width: 90ch; }
+.notes code { font: 12px var(--mono); }
+footer { font: 11px var(--mono); color: var(--muted); margin-top: 30px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="world" id="world">
+    <canvas id="gl"></canvas>
+    <div class="labels" id="labels"></div>
+    <div class="hud">
+      <div class="eyebrow" id="eyebrow"></div>
+      <h1>Spatialized code</h1>
+      <div class="controls">
+        <span class="grp"><span class="lbl">Rooms</span><div class="tabs" id="group-tabs"><button data-g="room" aria-pressed="true" title="files that depend on each other and change together">By dependencies</button><button data-g="folder" title="the folders the code is filed in">By folders</button></div></span>
+        <span class="grp"><span class="lbl">View</span><div class="tabs" id="view-tabs"><button data-v="top">Top</button><button data-v="axo" aria-pressed="true">Axonometric</button><button data-v="persp">Perspective</button><button data-v="front">Front</button></div></span>
+        <span class="grp"><span class="lbl">Strata</span><div class="tabs" id="color-tabs"><button data-c="lang" aria-pressed="true">Language</button><button data-c="folder">Folder</button><button data-c="churn">Recent changes</button><button data-c="dup">Duplication</button><button data-c="cx">Complexity</button></div></span>
+      </div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="cut" id="cut" role="slider" aria-label="Cross-section: the tier the cut is at" tabindex="0"><div class="ttl">Cross-section</div><div class="track" id="cut-track"></div><div class="note" id="cut-note"></div></div>
+    <button class="help-btn" id="help-btn" aria-expanded="false" aria-controls="help" title="How to read the map">?</button>
+    <div class="help" id="help" role="dialog" aria-label="How to read the map">
+      <p><b>Platforms</b> are the architecture's tiers, top to bottom: presentation, application, domain, data, integration. Each file is sorted into one by what its code uses (UI, HTTP or a command line, nothing but logic, storage, another program's API); where the code shows nothing, its path decides; <code>[tiers]</code> in the config overrides both.</p>
+      <p><b>Rooms</b> are openings in a platform. <b>By dependencies</b>: files of one tier that depend on each other and change together, whatever folder they are in. <b>By folders</b>: the folders the code is filed in, a big folder split into its sub-folders; a component's rooms stand in a tinted wing. A component sits at the same spot on every platform and in both views. Switch between them and watch the files move: a folder that is one thing moves as a block, a folder that is several things scatters.</p>
+      <p><b>Folders vs rooms</b> (the panel): how far the two agree, folders split across several rooms, rooms that gather several folders, and files whose dependencies live in another folder. Colour the strata by <b>Folder</b> to see it on the map: one colour per component, a shade per sub-folder.</p>
+      <p><b>Strata</b>: below each opening hangs a pit, as deep as the room's code. Every band on the pit's walls is one file, as thick as its share of the room's lines, the biggest on top; it darkens with depth. Its colour is chosen above (language, recent changes, duplication, complexity).</p>
+      <p><b>Corridors</b> on a platform, <b>tubes</b> between platforms carry the dependencies between rooms, wider for more; red where two rooms depend on each other, dashed lavender where they only change together.</p>
+      <p>On a room's floor: <b>pins</b> are magic values, <b>hatching</b> duplicated code, <b>dark discs</b> swallowed errors, an <b>orange cone</b> a layer violation; a <b>dashed red rim</b> a dependency cycle; warm glass a hotspot. <b>Orange arcs</b> tie rooms that hold clones of each other.</p>
+      <p><b>Cross-section</b> (right): cut the stack at a tier. The tiers above it are cut away, that tier is solid and labelled, the ones below are ghosted. Alt + scroll moves the cut.</p>
+      <p>Hover a room for its numbers, click it for its files and findings, double-click it for its class diagram. The metrics table and the coupling matrix are below the map.</p>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+  <aside class="panel" id="panel"></aside>
+</div>
+<section class="below" id="metrics-section">
+  <h3>Metrics per room</h3>
+  <div class="sub">click a column to sort · colour: the worse a value against the others, the warmer · code only (no docs, no tests; generated files counted apart)</div>
+  <div class="tablewrap"><table id="metrics"></table></div>
+  <div class="grid2">
+    <div>
+      <h3>Coupling between rooms</h3>
+      <div class="sub">row depends on column (references, darker = more); a dot: they also change together</div>
+      <div class="tablewrap"><table class="matrix" id="coupling"></table></div>
+    </div>
+    <div>
+      <h3>How to read the map</h3>
+      <div class="notes" id="notes"></div>
+    </div>
+  </div>
+  <footer id="footer"></footer>
+</section>
+<div class="modal" id="modal"><div class="box"><div class="bar"><h3 id="m-title"></h3><span class="path" id="m-path"></span><div class="zoom" id="m-zoom"></div><button class="btn" id="m-close">Close ✕</button></div><div class="body" id="m-body"></div></div></div>
+<div class="tip" id="tip"></div>
+<script>/*__VENDOR__*/</script>
+<script>
+const DATA = /*__DATA__*/null;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const fmt = (n) => n >= 10000 ? (n / 1000).toFixed(0) + "k" : n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
+const pct = (x) => (100 * x).toFixed(x < 0.1 ? 1 : 0) + "%";
+// two views of the same files: rooms derived from what the code does ("room"), and rooms as the folders have them
+// ("folder"); a file is in one of each (FILES[p].room, FILES[p].folder)
+const VIEWS = DATA.views, FILES = DATA.files, FIT = DATA.fit;
+const ALL_ROOMS = [...Object.values(VIEWS.room.rooms), ...Object.values(VIEWS.folder.rooms)];
+const TIERS = DATA.tiers.filter((t) => ALL_ROOMS.some((r) => r.tier === t.id));
+const TIER_IX = Object.fromEntries(TIERS.map((t, i) => [t.id, i]));
+const TIER_COLOR = { presentation: "#d48b73", application: "#9a8fc2", domain: "#b3a796", data: "#86a382", integration: "#c4a25e" };
+const SLAB_COLOR = "#f6f1e9";
+const LANG_COLOR = { python: "#7e9cc0", csharp: "#9d86b8", cpp: "#c98b7a", typescript: "#6fa9a3", tsx: "#6fa9a3", javascript: "#d1b46a" };
+const LANG_NAME = { python: "Python", csharp: "C#", cpp: "C++", typescript: "TypeScript", tsx: "TSX", javascript: "JavaScript" };
+const GROUP_NAME = { room: "By dependencies", folder: "By folders" };
+let grouping = "room", V = VIEWS.room, ROOMS = V.rooms, IDS = [];
+function useView(g) {
+  grouping = g; V = VIEWS[g]; ROOMS = V.rooms;
+  IDS = Object.keys(ROOMS).sort((a, b) => (TIER_IX[ROOMS[a].tier] - TIER_IX[ROOMS[b].tier]) || ROOMS[b].loc - ROOMS[a].loc);
+}
+useView("room");
+const viewOf = (rid) => VIEWS.room.rooms[rid] ? "room" : VIEWS.folder.rooms[rid] ? "folder" : null;
+const anyRoom = (rid) => VIEWS.room.rooms[rid] || VIEWS.folder.rooms[rid];
+let colorBy = "lang", viewKind = "axo", selected = null, hovered = null, cut = -1, hidePits = false;
+// the cross-section: -1 all tiers; k: the tiers above k cut away, k solid and labelled, the ones below ghosted
+const visOf = (tier) => cut < 0 ? "full" : TIER_IX[tier] < cut ? "hidden" : TIER_IX[tier] === cut ? "full" : "ghost";
+const labelled = (tier) => TIER_IX[tier] === Math.max(0, cut);
+const GHOST = 0.22;
+$("#eyebrow").textContent = `Project: ${DATA.title}`;
+
+// ------------------------------------------------------------------ colours
+const warm = (t) => {
+  t = Math.max(0, Math.min(1, t));
+  const a = [233, 226, 214], b = [238, 113, 56], c = [194, 67, 43];
+  const m = t < 0.6 ? [a, b, t / 0.6] : [b, c, (t - 0.6) / 0.4];
+  return `rgb(${m[0].map((v, i) => Math.round(v + (m[1][i] - v) * m[2])).join(",")})`;
+};
+const SCALES = {
+  churn: { of: (f) => f.recent / 12, label: "commits touching the file in the last 30 days", lo: "0", hi: "12 or more" },
+  dup: { of: (f) => f.dup / 0.25, label: "share of the file inside a run of ≥ 60 tokens found elsewhere too", lo: "0%", hi: "25% or more" },
+  cx: { of: (f) => f.cx_max / 40, label: "cyclomatic complexity of the file's most complex function", lo: "1", hi: "40 or more" },
+};
+// folders: a hue per component (the biggest first), a shade per sub-folder of it
+const COMP_LOC = {};
+for (const f of Object.values(FILES)) COMP_LOC[f.comp] = (COMP_LOC[f.comp] || 0) + f.loc;
+const COMPS = Object.keys(COMP_LOC).sort((a, b) => COMP_LOC[b] - COMP_LOC[a]);
+const COMP_HUE = Object.fromEntries(COMPS.map((c, i) => [c, (18 + i * 137.508) % 360]));
+const COMP_FOLDERS = {};
+for (const [rid, r] of Object.entries(VIEWS.folder.rooms).sort((a, b) => a[1].path.localeCompare(b[1].path))) (COMP_FOLDERS[r.comp] ||= []).push(rid);
+const compName = (c) => (COMP_FOLDERS[c] || []).map((rid) => VIEWS.folder.rooms[rid].name).sort((a, b) => a.split("/").length - b.split("/").length || a.length - b.length)[0] || c;
+function compColor(c, shade = 0.5, sat = 42) { return `hsl(${Math.round(COMP_HUE[c] ?? 0)},${sat}%,${Math.round(50 + 24 * shade)}%)`; }
+function folderColor(f) {
+  const sibs = COMP_FOLDERS[f.comp] || [], k = sibs.indexOf(f.folder);
+  return compColor(f.comp, sibs.length > 1 ? k / (sibs.length - 1) : 0.5);
+}
+function stratumColor(f) {
+  if (f.rest) return "#cfc9c1";
+  if (colorBy === "lang") return LANG_COLOR[f.lang] || "#bbb";
+  if (colorBy === "folder") return folderColor(f);
+  return warm(SCALES[colorBy].of(f));
+}
+const col = (c) => new THREE.Color(c);
+
+// ------------------------------------------------------------------ geometry of the map
+// the platforms are sized over both views, so a component stands at the same spot in either
+const maxLoc = Math.max(...ALL_ROOMS.map((r) => r.loc));
+const depthOf = (loc) => 1.5 + 14 * Math.sqrt(loc / maxLoc);
+const SLAB = 0.6, MARGIN = 3;
+const X0 = Math.min(...ALL_ROOMS.map((r) => r.x)) - MARGIN, X1 = Math.max(...ALL_ROOMS.map((r) => r.x + r.w)) + MARGIN;
+const Y0 = Math.min(...ALL_ROOMS.map((r) => r.y)) - MARGIN, Y1 = Math.max(...ALL_ROOMS.map((r) => r.y + r.h)) + MARGIN;
+const GAP = depthOf(maxLoc) + 9;
+function offset(tier) {
+  return new THREE.Vector3(0, -TIER_IX[tier] * GAP, 0);
+}
+const at = (tier, x, y, h = 0) => offset(tier).add(new THREE.Vector3(x, h, y));
+
+function roomFiles(rid) {
+  return ROOMS[rid].files.map((p) => ({ path: p, ...FILES[p] })).filter((f) => !f.generated).sort((a, b) => b.loc - a.loc);
+}
+
+// rectilinear paths with soft corners, in 2D (x, y) map units
+function rounded(points, radius = 0.9) {
+  const out = [points[0]];
+  for (let i = 1; i < points.length - 1; i++) {
+    const [p, c, n] = [points[i - 1], points[i], points[i + 1]];
+    const d1 = Math.hypot(c[0] - p[0], c[1] - p[1]), d2 = Math.hypot(n[0] - c[0], n[1] - c[1]);
+    if (d1 < 1e-6 || d2 < 1e-6) continue;
+    const r = Math.min(radius, d1 / 2, d2 / 2);
+    const a = [c[0] + (p[0] - c[0]) * r / d1, c[1] + (p[1] - c[1]) * r / d1], b = [c[0] + (n[0] - c[0]) * r / d2, c[1] + (n[1] - c[1]) * r / d2];
+    for (let k = 0; k <= 6; k++) { const t = k / 6, u = 1 - t; out.push([u * u * a[0] + 2 * u * t * c[0] + t * t * b[0], u * u * a[1] + 2 * u * t * c[1] + t * t * b[1]]); }
+  }
+  out.push(points[points.length - 1]);
+  return out;
+}
+const SIDES = ["e", "w", "s", "n"];
+function sideToward(r, x, y) {
+  const cx = r.x + r.w / 2, cy = r.y + r.h / 2, dx = x - cx, dy = y - cy;
+  if (Math.abs(dx) / r.w > Math.abs(dy) / r.h) return dx > 0 ? "e" : "w";
+  return dy > 0 ? "s" : "n";
+}
+function door(r, side, k, n) { // the k-th of n doors on a side, out on the slab just beyond the opening
+  const t = (k + 1) / (n + 1), o = 0.5;
+  if (side === "e") return [r.x + r.w + o, r.y + t * r.h];
+  if (side === "w") return [r.x - o, r.y + t * r.h];
+  if (side === "s") return [r.x + t * r.w, r.y + r.h + o];
+  return [r.x + t * r.w, r.y - o];
+}
+function route(a, sa, b, sb) { // Manhattan route from door a (leaving by side sa) to door b
+  const h = (s) => s === "e" || s === "w";
+  if (h(sa) && h(sb)) { const mx = (a[0] + b[0]) / 2; return [a, [mx, a[1]], [mx, b[1]], b]; }
+  if (!h(sa) && !h(sb)) { const my = (a[1] + b[1]) / 2; return [a, [a[0], my], [b[0], my], b]; }
+  return h(sa) ? [a, [b[0], a[1]], b] : [a, [a[0], b[1]], b];
+}
+
+// ------------------------------------------------------------------ three.js scene
+const canvas = $("#gl"), world = $("#world");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xfff6ee, 0x6a5f78, 0.95));
+const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(-40, 80, 30); scene.add(sun);
+let root = null, content = null, camera = null, controls = null;
+const pickables = [], labelEls = [], linkObjs = [];
+
+function ribbon(path2d, tier, h, width, color, opacity, dashed) {
+  const pts = path2d.map(([x, y]) => at(tier, x, y, h));
+  const pos = [], idx = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[Math.min(i + 1, pts.length - 1)], o = pts[Math.max(i - 1, 0)];
+    const d = new THREE.Vector3().subVectors(q, o).setY(0).normalize();
+    const nrm = new THREE.Vector3(-d.z, 0, d.x).multiplyScalar(width / 2);
+    pos.push(p.x + nrm.x, p.y, p.z + nrm.z, p.x - nrm.x, p.y, p.z - nrm.z);
+    if (i < pts.length - 1 && (!dashed || i % 3 !== 2)) idx.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false }));
+}
+function densify(path2d, step = 0.6) { // more points along straight runs, so dashes are even
+  const out = [path2d[0]];
+  for (let i = 1; i < path2d.length; i++) {
+    const [a, b] = [path2d[i - 1], path2d[i]], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
+    for (let k = 1; k <= n; k++) out.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
+  }
+  return out;
+}
+function curve3(points3, radius = 1.2) { // a rectilinear 3D path with soft corners
+  const cp = new THREE.CurvePath();
+  let prev = points3[0];
+  for (let i = 1; i < points3.length; i++) {
+    const c = points3[i];
+    if (i === points3.length - 1) { cp.add(new THREE.LineCurve3(prev, c)); break; }
+    const n = points3[i + 1];
+    const d1 = c.distanceTo(prev), d2 = n.distanceTo(c), r = Math.min(radius, d1 / 2, d2 / 2);
+    const a = c.clone().add(prev.clone().sub(c).setLength(r)), b = c.clone().add(n.clone().sub(c).setLength(r));
+    if (a.distanceTo(prev) > 1e-6) cp.add(new THREE.LineCurve3(prev, a));
+    cp.add(new THREE.QuadraticBezierCurve3(a, c, b));
+    prev = b;
+  }
+  return cp;
+}
+const hatchTex = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const x = c.getContext("2d"); x.strokeStyle = "#c2432b"; x.lineWidth = 5;
+  for (let i = -64; i < 128; i += 16) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 64, 64); x.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+})();
+const rnd = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+const hashStr = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+function fade(group, k) {
+  group.traverse((o) => { if (!o.material) return; o.material.transparent = true; o.material.opacity = (o.material.opacity ?? 1) * k; o.material.depthWrite = false; });
+}
+function build() {
+  if (root) { scene.remove(root); root.traverse((o) => { o.geometry && o.geometry.dispose(); }); }
+  root = new THREE.Group(); scene.add(root);
+  pickables.length = 0; linkObjs.length = 0;
+  $("#labels").innerHTML = ""; labelEls.length = 0;
+  for (const t of TIERS) {
+    const v = visOf(t.id);
+    if (v === "hidden") continue;
+    content = new THREE.Group(); root.add(content);
+    platform(t);
+    if (grouping === "folder") wings(t);
+    for (const rid of IDS.filter((r) => ROOMS[r].tier === t.id)) room(rid);
+    if (v === "ghost") fade(content, GHOST);
+  }
+  content = new THREE.Group(); root.add(content);
+  if (!hidePits) { links(); threads(); }
+}
+
+// by folders: a component's rooms stand in a wing of their own, tinted in the component's colour
+function wings(t) {
+  const by = {};
+  for (const rid of IDS.filter((r) => ROOMS[r].tier === t.id)) (by[ROOMS[rid].comp] ||= []).push(ROOMS[rid]);
+  for (const [c, rs] of Object.entries(by)) {
+    if (rs.length < 2) continue;
+    const m = 1.3, x0 = Math.min(...rs.map((r) => r.x)) - m, x1 = Math.max(...rs.map((r) => r.x + r.w)) + m;
+    const y0 = Math.min(...rs.map((r) => r.y)) - m, y1 = Math.max(...rs.map((r) => r.y + r.h)) + m;
+    const rr = 1.2, s = new THREE.Shape();
+    s.moveTo(x0 + rr, -y0); s.lineTo(x1 - rr, -y0); s.quadraticCurveTo(x1, -y0, x1, -y0 - rr); s.lineTo(x1, -y1 + rr); s.quadraticCurveTo(x1, -y1, x1 - rr, -y1);
+    s.lineTo(x0 + rr, -y1); s.quadraticCurveTo(x0, -y1, x0, -y1 + rr); s.lineTo(x0, -y0 - rr); s.quadraticCurveTo(x0, -y0, x0 + rr, -y0);
+    const floor = new THREE.Mesh(new THREE.ShapeGeometry(s), new THREE.MeshBasicMaterial({ color: compColor(c, 0.75, 45), transparent: true, opacity: 0.32, depthWrite: false }));
+    floor.rotation.x = -Math.PI / 2; floor.position.copy(offset(t.id)).add(new THREE.Vector3(0, 0.015, 0)); content.add(floor);
+    const edge = new THREE.Line(new THREE.BufferGeometry().setFromPoints(s.getPoints(8).map((p) => at(t.id, p.x, -p.y, 0.025))), new THREE.LineBasicMaterial({ color: compColor(c, 0.1, 35) }));
+    content.add(edge);
+    const lab = document.createElement("div"); lab.className = "wing"; lab.textContent = compName(c); lab.style.setProperty("--c", compColor(c, 0.2, 40));
+    $("#labels").appendChild(lab); labelEls.push({ el: lab, p: at(t.id, x0 + 0.4, y0 + 0.4, 0.2), rank: 0, quiet: !labelled(t.id), wing: true });
+  }
+}
+
+function platform(t) {
+  const shape = new THREE.Shape([new THREE.Vector2(X0, -Y0), new THREE.Vector2(X1, -Y0), new THREE.Vector2(X1, -Y1), new THREE.Vector2(X0, -Y1)]);
+  for (const rid of IDS.filter((r) => ROOMS[r].tier === t.id)) {
+    const r = ROOMS[rid];
+    shape.holes.push(new THREE.Path([new THREE.Vector2(r.x, -r.y), new THREE.Vector2(r.x, -r.y - r.h), new THREE.Vector2(r.x + r.w, -r.y - r.h), new THREE.Vector2(r.x + r.w, -r.y)]));
+  }
+  const g = new THREE.ExtrudeGeometry(shape, { depth: SLAB, bevelEnabled: false });
+  g.rotateX(-Math.PI / 2); g.translate(0, -SLAB, 0);
+  const o = offset(t.id);
+  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: SLAB_COLOR, transparent: true, opacity: 0.96 }));
+  m.position.copy(o); content.add(m);
+  // the tier shows as a band along the slab's edge, standing proud of the slab on every side (no face shared
+  // with it, so nothing flickers)
+  const edge = new THREE.MeshLambertMaterial({ color: TIER_COLOR[t.id] });
+  const bw = 0.45, e = 0.04, cx = (X0 + X1) / 2, cz = (Y0 + Y1) / 2, L = X1 - X0 + 2 * e, D = Y1 - Y0 + 2 * e;
+  const ins = (lo, sign) => lo - sign * e + sign * bw / 2;
+  for (const [w, d, x, z] of [[L, bw, cx, ins(Y0, 1)], [L, bw, cx, ins(Y1, -1)], [bw, D, ins(X0, 1), cz], [bw, D, ins(X1, -1), cz]]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, SLAB + 2 * e + 0.03, d), edge);
+    b.position.copy(o).add(new THREE.Vector3(x, -SLAB / 2 + 0.015, z)); content.add(b);
+  }
+  if (visOf(t.id) === "full") {
+    const lab = document.createElement("div"); lab.className = "tier"; lab.textContent = t.label; lab.style.setProperty("--c", TIER_COLOR[t.id]);
+    $("#labels").appendChild(lab); labelEls.push({ el: lab, p: at(t.id, X0 + 0.5, Y1 - 0.5, 0.2), tier: true });
+  }
+}
+
+function room(rid) {
+  const r = ROOMS[rid], d = depthOf(r.loc), t = r.tier;
+  const files = roomFiles(rid), total = files.reduce((s, f) => s + f.loc, 0) || 1;
+  if (hidePits) { // while the files move between views: only the opening's rim
+    const x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
+    content.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => at(t, x, y, 0.05))), new THREE.LineBasicMaterial({ color: "#8d857f" })));
+    return;
+  }
+  const shown = files.slice(0, 24), rest = files.slice(24);
+  const bands = shown.map((f) => ({ f, h: (d - SLAB) * f.loc / total }));
+  if (rest.length) bands.push({ f: { rest: true, path: `${rest.length} smaller files`, loc: rest.reduce((s, f) => s + f.loc, 0) }, h: (d - SLAB) * rest.reduce((s, f) => s + f.loc, 0) / total });
+  // the pit: one band per file on all four walls, the biggest on top, darker with depth
+  const pos = [], colr = [];
+  const x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
+  const quad = (a, b, c, e, color) => { for (const p of [a, b, c, a, c, e]) { pos.push(...p); colr.push(color.r, color.g, color.b); } };
+  let z = -SLAB;
+  const dark = col("#3b3644");
+  for (const { f, h } of bands) {
+    const za = z, zb = z - h, c = col(stratumColor(f)).lerp(dark, Math.min(0.55, -za / 30));
+    quad([x0, za, y0], [x1, za, y0], [x1, zb, y0], [x0, zb, y0], c.clone().multiplyScalar(0.92));
+    quad([x0, za, y1], [x1, za, y1], [x1, zb, y1], [x0, zb, y1], c.clone().multiplyScalar(1.0));
+    quad([x0, za, y0], [x0, za, y1], [x0, zb, y1], [x0, zb, y0], c.clone().multiplyScalar(0.8));
+    quad([x1, za, y0], [x1, za, y1], [x1, zb, y1], [x1, zb, y0], c.clone().multiplyScalar(0.86));
+    z = zb;
+  }
+  quad([x0, z, y0], [x1, z, y0], [x1, z, y1], [x0, z, y1], dark);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(colr, 3));
+  const pit = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  pit.position.copy(offset(t)); pit.userData.rid = rid; content.add(pit); pickables.push(pit);
+  // the floor: glass over the opening, warm when the room is a hotspot; hatching for duplication
+  const maxHot = Math.max(...IDS.map((i) => ROOMS[i].hotspot || 0.01));
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.h), new THREE.MeshBasicMaterial({ color: col("#fbf8f3").lerp(col("#ee7138"), Math.min(0.6, r.hotspot / maxHot)), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
+  glass.rotation.x = -Math.PI / 2; glass.position.copy(at(t, r.x + r.w / 2, r.y + r.h / 2, 0.02)); glass.userData.rid = rid; content.add(glass); pickables.push(glass);
+  if (r.dup > 0.01) {
+    const tex = hatchTex.clone(); tex.needsUpdate = true; tex.repeat.set(r.w / 2, r.h / 2);
+    const hm = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: Math.min(0.9, r.dup / 0.08), depthWrite: false }));
+    hm.rotation.x = -Math.PI / 2; hm.position.copy(at(t, r.x + r.w / 2, r.y + r.h / 2, 0.04)); content.add(hm);
+  }
+  // the rim: dashed red when the room is in a dependency cycle
+  const rim = new THREE.Line(new THREE.BufferGeometry().setFromPoints([[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => at(t, x, y, 0.05))),
+    r.cycle != null ? new THREE.LineDashedMaterial({ color: "#c2432b", dashSize: 0.6, gapSize: 0.35 }) : new THREE.LineBasicMaterial({ color: "#8d857f" }));
+  rim.computeLineDistances(); content.add(rim);
+  // magic values: pins; swallowed errors: dark discs; a layer violation: an orange cone
+  const rand = rnd(hashStr(rid) % 2147483646 + 1);
+  const pinMat = new THREE.MeshLambertMaterial({ color: "#c2432b" }), stemMat = new THREE.LineBasicMaterial({ color: "#5d5660" });
+  for (let i = 0; i < Math.min(14, Math.round(r.magic_kloc / 10)); i++) {
+    const px = x0 + 0.5 + rand() * (r.w - 1), py = y0 + 0.5 + rand() * (r.h - 1);
+    content.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([at(t, px, py, 0.05), at(t, px, py, 1.0)]), stemMat));
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), pinMat); s.position.copy(at(t, px, py, 1.0)); content.add(s);
+  }
+  for (let i = 0; i < Math.min(10, r.swallowed_n); i++) {
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.3, 16), new THREE.MeshBasicMaterial({ color: "#37353d", transparent: true, opacity: 0.75, depthWrite: false }));
+    disc.rotation.x = -Math.PI / 2; disc.position.copy(at(t, x0 + 0.5 + rand() * (r.w - 1), y0 + 0.5 + rand() * (r.h - 1), 0.06)); content.add(disc);
+  }
+  if (r.violations_n) {
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 12), new THREE.MeshLambertMaterial({ color: "#ee7138" }));
+    cone.position.copy(at(t, x1 - 0.6, y0 + 0.6, 0.5)); content.add(cone);
+  }
+  const lab = document.createElement("div"); lab.className = "room";
+  lab.innerHTML = `${esc(r.name)}<small>${r.files.length} files · ${fmt(r.loc)} loc</small>`;
+  $("#labels").appendChild(lab); labelEls.push({ el: lab, p: at(t, r.x + r.w / 2, r.y + r.h / 2, 0.3), rid, rank: r.loc, quiet: !labelled(t) });
+}
+
+function pairsOf() {
+  const pairs = new Map();
+  for (const l of V.links) {
+    if (!(l.refs + l.cochange > 0) || !ROOMS[l.a] || !ROOMS[l.b]) continue;
+    const k = [l.a, l.b].sort().join("|");
+    const p = pairs.get(k) || { a: [l.a, l.b].sort()[0], b: [l.a, l.b].sort()[1], refs: 0, co: 0, ab: false, ba: false };
+    p.refs += l.refs; p.co += l.cochange;
+    if (l.refs > 0) { if (l.a === p.a) p.ab = true; else p.ba = true; }
+    pairs.set(k, p);
+  }
+  const all = [...pairs.values()], max = Math.max(...all.map((p) => p.refs + 3 * p.co));
+  return all.map((p) => ({ ...p, strength: (p.refs + 3 * p.co) / max, mutual: p.ab && p.ba })).filter((p) => p.strength >= 0.02);
+}
+const linkColor = (p) => p.mutual ? "#c2432b" : p.refs > 0 ? "#7d7279" : "#8f8bb3";
+
+function links() {
+  const pairs = pairsOf().filter((p) => visOf(ROOMS[p.a].tier) !== "hidden" && visOf(ROOMS[p.b].tier) !== "hidden");
+  // doors: every link that leaves a room by one side gets its own door along that side
+  const bySide = new Map();
+  const plan = pairs.map((p) => {
+    const A = ROOMS[p.a], B = ROOMS[p.b], same = A.tier === B.tier;
+    let ta, tb;
+    if (same) { ta = [B.x + B.w / 2, B.y + B.h / 2]; tb = [A.x + A.w / 2, A.y + A.h / 2]; }
+    else { ta = [B.x + B.w / 2, B.y + B.h / 2]; tb = [A.x + A.w / 2, A.y + A.h / 2]; }
+    const sa = sideToward(A, ...ta), sb = sideToward(B, ...tb);
+    for (const [rid, s, other] of [[p.a, sa, tb], [p.b, sb, ta]]) { const k = rid + s; if (!bySide.has(k)) bySide.set(k, []); bySide.get(k).push({ p, other }); }
+    return { p, same, sa, sb };
+  });
+  const doorOf = (rid, s, p) => {
+    const list = bySide.get(rid + s), horiz = s === "e" || s === "w";
+    list.sort((u, v) => horiz ? (ROOMS[u.p.a === rid ? u.p.b : u.p.a].y - ROOMS[v.p.a === rid ? v.p.b : v.p.a].y) : (ROOMS[u.p.a === rid ? u.p.b : u.p.a].x - ROOMS[v.p.a === rid ? v.p.b : v.p.a].x));
+    return door(ROOMS[rid], s, list.findIndex((u) => u.p === p), list.length);
+  };
+  const cross = plan.filter((x) => !x.same);
+  plan.forEach((x, n) => {
+    const { p, sa, sb } = x, A = ROOMS[p.a], B = ROOMS[p.b];
+    const a = doorOf(p.a, sa, p), b = doorOf(p.b, sb, p);
+    const width = 0.22 + 1.1 * Math.sqrt(p.strength), color = linkColor(p), opacity = p.refs > 0 ? 0.75 : 0.6;
+    const objs = [];
+    if (x.same) {
+      const m = ribbon(densify(rounded(route(a, sa, b, sb))), A.tier, 0.03 + 0.002 * (n % 7), width, color, opacity, p.refs === 0);
+      content.add(m); objs.push(m);
+    } else {
+      // a tube: down from the upper room's door, across at a height of its own, down to the lower room's door
+      const [U, L, du, dl] = TIER_IX[A.tier] < TIER_IX[B.tier] ? [A, B, a, b] : [B, A, b, a];
+      const k = cross.indexOf(x), yu = offset(U.tier).y - SLAB - 0.4, yl = offset(L.tier).y + 0.25;
+      const ym = offset(U.tier).y - depthOf(maxLoc) - 1.5 - (k % 9) * 0.55;
+      const pts = [new THREE.Vector3(du[0], yu, du[1]), new THREE.Vector3(du[0], ym, du[1]), new THREE.Vector3(dl[0], ym, du[1]), new THREE.Vector3(dl[0], ym, dl[1]), new THREE.Vector3(dl[0], yl, dl[1])];
+      const dedup = pts.filter((q, i) => i === 0 || q.distanceTo(pts[i - 1]) > 1e-3);
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(curve3(dedup), 120, 0.08 + 0.45 * Math.sqrt(p.strength), 10, false),
+        new THREE.MeshLambertMaterial({ color, transparent: true, opacity: p.refs > 0 ? 0.8 : 0.45 }));
+      content.add(tube); objs.push(tube);
+      for (const [d, tr] of [[du, U.tier], [dl, L.tier]]) { // a collar where the tube meets the slab
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.25 + 0.5 * Math.sqrt(p.strength), 20), new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+        ring.rotation.x = -Math.PI / 2; ring.position.copy(at(tr, d[0], d[1], 0.03)); content.add(ring); objs.push(ring);
+      }
+    }
+    if (visOf(A.tier) === "ghost" && visOf(B.tier) === "ghost") for (const o of objs) fade(o, GHOST);
+    linkObjs.push({ a: p.a, b: p.b, objs });
+  });
+}
+
+function threads() {
+  const max = Math.max(1, ...V.clones.map((c) => c.n));
+  for (const c of V.clones) {
+    if (c.n < 3 || !ROOMS[c.a] || !ROOMS[c.b]) continue;
+    const A = ROOMS[c.a], B = ROOMS[c.b];
+    if (visOf(A.tier) === "hidden" || visOf(B.tier) === "hidden") continue;
+    const a = at(A.tier, A.x + A.w * 0.75, A.y + A.h * 0.25, 0.1), b = at(B.tier, B.x + B.w * 0.75, B.y + B.h * 0.25, 0.1);
+    const mid = a.clone().add(b).multiplyScalar(0.5); mid.y = Math.max(a.y, b.y) + 4 + 6 * (c.n / max);
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new THREE.QuadraticBezierCurve3(a, mid, b).getPoints(40)), new THREE.LineDashedMaterial({ color: "#ee7138", dashSize: 0.5, gapSize: 0.4, transparent: true, opacity: 0.85 }));
+    line.computeLineDistances(); content.add(line);
+    if (visOf(A.tier) === "ghost" && visOf(B.tier) === "ghost") fade(line, GHOST);
+    linkObjs.push({ a: c.a, b: c.b, objs: [line] });
+  }
+}
+
+// ------------------------------------------------------------------ switching views: the files move
+// Every file becomes a block (as big as its code, in its stratum colour) that rises out of its room in the old
+// view, crosses over and drops into its room in the new one. Pits are hidden meanwhile; the platforms swap halfway.
+function filePoints(g) {
+  const out = {};
+  for (const r of Object.values(VIEWS[g].rooms)) {
+    const fs = r.files.filter((p) => !FILES[p].generated).sort((a, b) => FILES[b].loc - FILES[a].loc);
+    const total = fs.reduce((s, p) => s + FILES[p].loc, 0) || 1, d = depthOf(r.loc);
+    let z = -SLAB;
+    for (const p of fs) {
+      const h = (d - SLAB) * FILES[p].loc / total, rand = rnd(hashStr(p) % 2147483646 + 1);
+      out[p] = { tier: r.tier, x: r.x + 0.5 + rand() * (r.w - 1), y: r.y + 0.5 + rand() * (r.h - 1), z: z - h / 2 };
+      z -= h;
+    }
+  }
+  return out;
+}
+let morph = null;
+const MORPH_MS = 2600;
+function switchGrouping(g, then) {
+  document.querySelectorAll("#group-tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.g === g));
+  if (g === grouping) { then && then(); return; }
+  const carry = selected ? counterpart(selected, g) : null;
+  const done = () => { useView(g); hidePits = false; build(); legend(); table(); coupling(); highlight(null); select(then ? null : carry); then && then(); };
+  if (morph) finishMorph();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
+  const from = filePoints(grouping), to = filePoints(g);
+  const paths = Object.keys(to).filter((p) => from[p] && visOf(FILES[p].tier) !== "hidden");
+  const maxF = Math.max(1, ...paths.map((p) => FILES[p].loc));
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff }), paths.length);
+  paths.forEach((p, i) => mesh.setColorAt(i, col(stratumColor({ path: p, ...FILES[p] }))));
+  scene.add(mesh);
+  hidePits = true; build(); $("#labels").classList.add("moving");
+  morph = { t0: performance.now(), g, done, mesh, paths, from, to, swapped: false,
+    size: paths.map((p) => 0.4 + 1.3 * Math.sqrt(FILES[p].loc / maxF)), delay: paths.map((p) => (hashStr(p) % 1000) / 1000 * 0.22) };
+}
+const ease = (u) => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+function stepMorph() {
+  const M = morph, t = Math.min(1, (performance.now() - M.t0) / MORPH_MS), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+  if (!M.swapped && t >= 0.5) { M.swapped = true; useView(M.g); build(); } // the new view's openings, still empty
+  M.paths.forEach((p, i) => {
+    const a = M.from[p], b = M.to[p], o = offset(a.tier), s = M.size[i];
+    const u = Math.max(0, Math.min(1, (t - M.delay[i]) / 0.76)), air = 2.5 + s;
+    let x, y, z; // rise (0–0.28), cross (0.28–0.72), drop (0.72–1)
+    if (u < 0.28) { const e = ease(u / 0.28); x = a.x; z = a.y; y = a.z + (air - a.z) * e; }
+    else if (u < 0.72) { const e = ease((u - 0.28) / 0.44); x = a.x + (b.x - a.x) * e; z = a.y + (b.y - a.y) * e; y = air + Math.sin(Math.PI * e) * (1.5 + 0.08 * Math.hypot(b.x - a.x, b.y - a.y)); }
+    else { const e = ease((u - 0.72) / 0.28); x = b.x; z = b.y; y = air + (b.z - air) * e; }
+    m4.compose(new THREE.Vector3(o.x + x, o.y + y, o.z + z), q, new THREE.Vector3(s, s, s));
+    M.mesh.setMatrixAt(i, m4);
+  });
+  M.mesh.instanceMatrix.needsUpdate = true;
+  if (t >= 1) finishMorph();
+}
+function finishMorph() {
+  const M = morph; morph = null;
+  scene.remove(M.mesh); M.mesh.geometry.dispose(); M.mesh.material.dispose();
+  $("#labels").classList.remove("moving");
+  M.done(); needs = true;
+}
+// the room of the other view holding most of this one's code
+function counterpart(rid, g) {
+  const v = viewOf(rid);
+  if (!v || v === g) return rid;
+  const parts = FIT.composition[v][rid];
+  return parts && parts.length ? parts[0][0] : null;
+}
+// go to a room of either view: switch views first when it is in the other one
+function go(rid) {
+  const v = viewOf(rid);
+  if (!v) return;
+  if (v === grouping) select(rid);
+  else switchGrouping(v, () => select(rid));
+}
+
+// ------------------------------------------------------------------ cameras and views
+function bounds() { // the platforms and the pits under them (not the arcs above)
+  const first = offset(TIERS[0].id), last = offset(TIERS[TIERS.length - 1].id);
+  return new THREE.Box3(new THREE.Vector3(first.x + X0, last.y - depthOf(maxLoc) - 1, Y0), new THREE.Vector3(last.x + X1, 1, Y1));
+}
+function setView(kind, keepTarget) {
+  viewKind = kind;
+  const box = bounds(), centre = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  const target = keepTarget && controls ? controls.target.clone() : centre;
+  const W = world.clientWidth, H = world.clientHeight, aspect = W / H, R = size.length() / 2;
+  if (controls) controls.dispose();
+  if (kind === "persp") {
+    camera = new THREE.PerspectiveCamera(38, aspect, 0.5, R * 20);
+    camera.position.copy(target).add(new THREE.Vector3(0.9, 0.75, 1.25).setLength(R * 2.6));
+  } else {
+    const half = kind === "top" ? Math.max(size.x / aspect, size.z) / 2 * 1.15 : kind === "front" ? Math.max(size.x / aspect, size.y) / 2 * 1.3 : R * 0.9;
+    if (kind === "front" && !keepTarget) target.y += half * 0.14; // the stack a little lower, clear of the title
+    camera = new THREE.OrthographicCamera(-half * aspect, half * aspect, half, -half, -R * 20, R * 20);
+    camera.position.copy(target).add(kind === "top" ? new THREE.Vector3(0, R * 3, 0.001) : kind === "front" ? new THREE.Vector3(0, 0, R * 3) : new THREE.Vector3(1, 1, 1).setLength(R * 3));
+  }
+  controls = new THREE.OrbitControls(camera, canvas);
+  controls.target.copy(target);
+  controls.enableDamping = true; controls.dampingFactor = 0.12; controls.screenSpacePanning = true;
+  const flat = kind === "top" || kind === "front"; // views along an axis: pan and zoom only
+  controls.enableRotate = !flat;
+  if (flat) controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+  controls.update();
+  $("#hint").textContent = flat ? "drag to pan · scroll to zoom · click a room · double-click for its classes"
+    : "drag to orbit · right-drag or shift-drag to pan · scroll to zoom · double-click a room for its classes";
+  controls.addEventListener("change", () => { needs = true; });
+  needs = true;
+}
+function resize() {
+  const W = world.clientWidth, H = world.clientHeight;
+  renderer.setSize(W, H, false);
+  if (!camera) return;
+  if (camera.isPerspectiveCamera) camera.aspect = W / H;
+  else { const h = (camera.top - camera.bottom) / 2; camera.left = -h * W / H; camera.right = h * W / H; }
+  camera.updateProjectionMatrix(); needs = true;
+}
+let needs = true;
+function loop() {
+  requestAnimationFrame(loop);
+  if (controls && controls.update()) needs = true;
+  if (morph) { stepMorph(); needs = true; }
+  if (!needs) return;
+  needs = false;
+  renderer.render(scene, camera);
+  const W = world.clientWidth, H = world.clientHeight, v = new THREE.Vector3();
+  const zoom = camera.isOrthographicCamera ? camera.zoom * (H / (camera.top - camera.bottom)) : H / (2 * Math.tan(camera.fov * Math.PI / 360) * camera.position.distanceTo(controls.target));
+  // labels: the selected and hovered room first, then the bigger rooms; one that would overlap a label
+  // already placed is hidden (zoom in to see it)
+  const placed = [];
+  const order = [...labelEls].sort((a, b) => (b.tier ? 2e9 : (b.rid === selected || b.rid === hovered) ? 1e9 : b.rank) - (a.tier ? 2e9 : (a.rid === selected || a.rid === hovered) ? 1e9 : a.rank));
+  for (const L of order) {
+    v.copy(L.p).project(camera);
+    const x = (v.x + 1) / 2 * W, y = (1 - v.y) / 2 * H;
+    let show = !(v.z > 1 || v.z < -1 || x < -50 || x > W + 50 || y < -20 || y > H + 20);
+    if (L.quiet && L.rid !== selected && L.rid !== hovered) show = false;
+    if (show && !L.tier) {
+      if (!L.w) { L.el.style.display = "block"; L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; }
+      const box = [x - L.w / 2, y - L.h / 2, x + L.w / 2, y + L.h / 2];
+      if (placed.some((q) => box[0] < q[2] && q[0] < box[2] && box[1] < q[3] && q[1] < box[3])) show = false;
+      else placed.push(box);
+    }
+    L.el.style.display = show ? "block" : "none";
+    L.el.style.left = x + "px"; L.el.style.top = y + "px";
+    if (L.rid) L.el.style.opacity = !hovered || hovered === L.rid ? 1 : 0.45;
+  }
+}
+
+// ------------------------------------------------------------------ picking
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = $("#tip");
+function pick(e) {
+  const rect = canvas.getBoundingClientRect();
+  mouse.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(pickables, false)[0];
+  return hit ? hit.object.userData.rid : null;
+}
+function highlight(rid) {
+  hovered = rid;
+  for (const l of linkObjs) for (const o of l.objs) {
+    if (o.material.userData.base === undefined) o.material.userData.base = o.material.opacity;
+    o.material.opacity = !rid || l.a === rid || l.b === rid ? o.material.userData.base : 0.08;
+  }
+  needs = true;
+}
+canvas.addEventListener("pointermove", (e) => {
+  if (e.buttons) return;
+  const rid = pick(e);
+  if (rid !== hovered) highlight(rid);
+  canvas.style.cursor = rid ? "pointer" : "default";
+  if (!rid) { tip.style.display = "none"; return; }
+  const r = ROOMS[rid], tier = TIERS[TIER_IX[r.tier]].label;
+  tip.innerHTML = `<b>${esc(r.name)}</b><span class="k">${tier} · ${esc(r.path)}</span><br>
+    ${r.files.length} files · ${fmt(r.loc)} loc · complexity avg ${r.cx_avg}, max ${r.cx_max}<br>
+    duplicated ${pct(r.dup)} · ${r.magic_n} magic values · ${r.swallowed_n} swallowed errors<br>
+    depends on ${r.ce} rooms · ${r.ca} depend on it${r.cycle != null ? ' · <span class="flag">in a cycle</span>' : ""}`;
+  tip.style.display = "block"; tip.style.left = e.clientX + 16 + "px"; tip.style.top = e.clientY + 12 + "px";
+});
+canvas.addEventListener("pointerleave", () => { tip.style.display = "none"; highlight(null); });
+let down = null;
+canvas.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
+canvas.addEventListener("click", (e) => { if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return; select(pick(e)); });
+canvas.addEventListener("dblclick", (e) => { const rid = pick(e); if (rid) openClasses(rid); });
+
+// ------------------------------------------------------------------ legend
+function legend() {
+  const strata = colorBy === "folder"
+    ? `<div class="scale">${COMPS.slice(0, 14).map((c) => `<span title="${esc(c)}"><i style="background:${compColor(c)}"></i>${esc(compName(c))}</span>`).join("")}${COMPS.length > 14 ? `<span>+${COMPS.length - 14} more</span>` : ""}</div><div>a colour per component, lighter or darker per sub-folder: a room of many colours gathers several folders</div>`
+    : colorBy === "lang"
+    ?`<div class="scale">${[...new Set(Object.values(FILES).map((f) => f.lang))].map((l) => `<span><i style="background:${LANG_COLOR[l]}"></i>${LANG_NAME[l] || l}</span>`).join("")}<span><i style="background:#cfc9c1"></i>the smaller files, together</span></div>`
+    : `<div class="scale"><span>${SCALES[colorBy].lo}<span class="ramp" style="background:linear-gradient(90deg,${warm(0)},${warm(0.6)},${warm(1)})"></span>${SCALES[colorBy].hi}</span></div><div>${SCALES[colorBy].label}</div>`;
+  $("#legend").innerHTML = `<details open><summary>Key</summary>
+    <div class="sym" style="margin-top:6px">${TIERS.map((t) => `<span title="${esc(t.about)}"><i style="background:${TIER_COLOR[t.id]}"></i>${t.label}</span>`).join("")}</div>
+    <div style="margin-top:6px"><b>Strata</b>: one band per file, as thick as its lines · colour: <b>${{ lang: "language", folder: "folder", churn: "recent changes", dup: "duplication", cx: "complexity" }[colorBy]}</b> · rooms: <b>${GROUP_NAME[grouping].toLowerCase()}</b></div>
+    ${strata}
+    <div class="sym">
+      <span><i style="background:#7d7279"></i>depends on (corridor; a tube between tiers)</span>
+      <span><i style="background:#c2432b"></i>both depend on each other</span>
+      <span><i style="background:#8f8bb3"></i>only change together (dashed)</span>
+      <span><i style="background:#c2432b;border-radius:50%"></i>magic values</span>
+      <span><i style="background:repeating-linear-gradient(45deg,#c2432b 0 2px,transparent 2px 5px)"></i>duplication</span>
+      <span><i style="background:#37353d;border-radius:50%"></i>swallowed errors</span>
+      <span><i style="background:#ee7138;clip-path:polygon(50% 0,100% 100%,0 100%)"></i>layer violation</span>
+      <span><i style="background:none;border-top:2px dashed #c2432b;height:0"></i>rim: dependency cycle</span>
+      <span><i style="background:none;border-top:2px dashed #ee7138;height:0"></i>arc: clones</span>
+      <span><i style="background:#f3c6ad"></i>warm glass: hotspot</span>
+    </div></details>`;
+}
+function tabs(id, attr, set) {
+  document.querySelectorAll(`#${id} button`).forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll(`#${id} button`).forEach((x) => x.setAttribute("aria-pressed", x === b));
+    set(b.dataset[attr]);
+  }));
+}
+function cutUI() {
+  const stops = [{ k: -1, label: "All tiers" }, ...TIERS.map((t, i) => ({ k: i, label: t.label, c: TIER_COLOR[t.id] }))];
+  $("#cut-track").innerHTML = stops.map((s) => `<button class="stop ${cut >= 0 && s.k > cut ? "below" : ""}" data-k="${s.k}" aria-pressed="${s.k === cut}" style="${s.c ? `--c:${s.c}` : ""}">${s.label}</button>`).join("");
+  $("#cut").setAttribute("aria-valuetext", stops.find((s) => s.k === cut).label);
+  $("#cut-note").textContent = cut < 0 ? "labels on the top tier; slide down to cut" : "above: cut away · below: ghosted";
+}
+function setCut(k) {
+  k = Math.max(-1, Math.min(TIERS.length - 1, k));
+  if (k === cut) return;
+  cut = k; build(); highlight(hovered); cutUI(); needs = true;
+}
+(() => {
+  const track = $("#cut-track");
+  const nearest = (e) => { const stops = [...track.querySelectorAll(".stop")]; let best = null, d = 1e9; for (const s of stops) { const r = s.getBoundingClientRect(), dy = Math.abs(e.clientY - (r.top + r.height / 2)); if (dy < d) { d = dy; best = s; } } return +best.dataset.k; };
+  let dragging = false;
+  track.addEventListener("pointerdown", (e) => { dragging = true; track.setPointerCapture(e.pointerId); setCut(nearest(e)); });
+  track.addEventListener("pointermove", (e) => { if (dragging) setCut(nearest(e)); });
+  track.addEventListener("pointerup", () => { dragging = false; });
+  $("#cut").addEventListener("keydown", (e) => { if (e.key === "ArrowDown") { setCut(cut + 1); e.preventDefault(); } if (e.key === "ArrowUp") { setCut(cut - 1); e.preventDefault(); } });
+  canvas.addEventListener("wheel", (e) => { if (e.altKey) { e.preventDefault(); e.stopImmediatePropagation(); setCut(cut + (e.deltaY > 0 ? 1 : -1)); } }, { capture: true, passive: false });
+})();
+$("#help-btn").addEventListener("click", () => { const open = $("#help").classList.toggle("open"); $("#help-btn").setAttribute("aria-expanded", open); });
+tabs("view-tabs", "v", (v) => setView(v));
+document.querySelectorAll("#group-tabs button").forEach((b) => b.addEventListener("click", () => switchGrouping(b.dataset.g)));
+tabs("color-tabs", "c", (c) => { colorBy = c; build(); legend(); highlight(hovered); if (selected) select(selected); needs = true; });
+
+// ------------------------------------------------------------------ the panel
+function sec(n, title, html) { return `<div class="sec"><div class="h"><span class="n">${n}</span><span class="t">${title}</span></div>${html}</div>`; }
+function overview() {
+  const tot = IDS.reduce((s, r) => s + ROOMS[r].loc, 0);
+  const worst = (key, f = (v) => v) => {
+    const r = [...IDS].sort((a, b) => ROOMS[b][key] - ROOMS[a][key]).slice(0, 4);
+    return `<div class="rows">${r.map((id) => `<div class="r"><span><a href="#" data-room="${id}">${esc(ROOMS[id].name)}</a> <span class="chip">${TIERS[TIER_IX[ROOMS[id].tier]].label}</span></span><span class="m">${f(ROOMS[id][key])}</span></div>`).join("")}</div>`;
+  };
+  const perTier = TIERS.map((t) => { const rs = IDS.filter((r) => ROOMS[r].tier === t.id); return `<div class="r"><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${TIER_COLOR[t.id]};margin-right:6px"></i>${t.label} <span class="m">${esc(t.about)}</span></span><span class="m">${rs.length} rooms · ${fmt(rs.reduce((s, r) => s + ROOMS[r].loc, 0))}</span></div>`; }).join("");
+  $("#panel").innerHTML = `<div class="eyebrow">Overview · ${GROUP_NAME[grouping].toLowerCase()}</div><h2>${IDS.length} ${grouping === "room" ? "rooms" : "folders"} on ${TIERS.length} tiers, ${fmt(tot)} lines</h2>
+    <div class="path">${DATA.generated} · ${esc(DATA.notes.join("; "))}</div>
+    ${sec("01", "Tiers", `<div class="rows">${perTier}</div>`)}
+    ${sec("02", "Folders vs rooms", fitSection())}
+    ${sec("03", "Look here first: hotspots", '<div class="empty">changed often in the last 30 days × complex</div>' + worst("hotspot"))}
+    ${sec("04", "Most duplicated", worst("dup", pct))}
+    ${sec("05", "Most magic values per kLOC", worst("magic_kloc"))}
+    ${sec("06", "Swallowed errors", worst("swallowed_n"))}
+    ${sec("07", "Dependency cycles", V.cycles.length ? V.cycles.map((c) => `<div class="rows"><div class="r"><span class="flag" style="white-space:normal">${c.map((r) => esc(ROOMS[r].name)).join(" ⇄ ")}</span></div></div>`).join("") : '<div class="empty">none</div>')}`;
+  wire();
+}
+function wire() { $("#panel").querySelectorAll("a[data-room]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); go(a.dataset.room); })); }
+
+// the parts of a room in the other view, as a bar and as rows
+const partColor = (rid) => { const r = anyRoom(rid); return viewOf(rid) === "folder" ? compColor(r.comp, (COMP_FOLDERS[r.comp] || []).indexOf(rid) / Math.max(1, (COMP_FOLDERS[r.comp] || []).length - 1)) : `hsl(${hashStr(rid) % 360},30%,${55 + hashStr(rid + "l") % 15}%)`; };
+const roomLink = (rid) => `<a href="#" data-room="${rid}">${esc(anyRoom(rid).name)}</a>`;
+function compoBar(parts) { return `<div class="compo">${parts.map(([rid, s]) => `<i style="width:${100 * s}%;background:${partColor(rid)}" title="${esc(anyRoom(rid).name)} ${pct(s)}"></i>`).join("")}</div>`; }
+function partsOf(rid) {
+  const parts = FIT.composition[grouping][rid] || [], other = grouping === "room" ? "folder" : "room";
+  const apart = FIT.apart.filter((a) => (grouping === "folder" ? a.folder === rid : FILES[a.file].room === rid));
+  return `${compoBar(parts)}<div class="rows">${parts.slice(0, 8).map(([o, sh]) => `<div class="r"><span><i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${partColor(o)}"></i>${roomLink(o)}</span><span class="m">${pct(sh)}</span></div>`).join("")}</div>
+    <div class="empty" style="margin-top:4px">${parts.length <= 1 ? (grouping === "room" ? "one folder: the folders agree with this room" : "one room: this folder is one thing") : `${parts.length} ${other === "folder" ? "folders" : "rooms"}; click one to switch views and go there`}</div>
+    ${apart.length ? `<div class="sub-h">Working with another folder</div><div class="rows">${apart.map((a) => `<div class="r"><span title="${esc(a.file)}">${esc(a.file.split("/").pop())} <span class="m">→</span> ${roomLink(a.toward)}</span><span class="m">${pct(a.share)}</span></div>`).join("")}</div>` : ""}`;
+}
+function fitSection() {
+  const R = VIEWS.room.rooms, F = VIEWS.folder.rooms;
+  const list = (items, label) => items.length ? `<div class="rows">${items.slice(0, 5).map((s) => `<div class="r" style="display:block"><span>${roomLink(s.id)} <span class="m">${label(s)}</span></span>${compoBar(s.parts)}<span class="m" style="font-size:11px">${s.parts.slice(0, 4).map(([o, sh]) => `${roomLink(o)} ${pct(sh)}`).join(" · ")}</span></div>`).join("")}</div>` : '<div class="empty">none</div>';
+  return `<div class="fitnum"><b>${FIT.agreement.toFixed(2)}</b><span>agreement of folders and rooms<br>(1 = the folders are what the code does)</span></div>
+    <div class="empty">dependencies that stay inside a folder: ${FIT.deps_in_folder == null ? "—" : pct(FIT.deps_in_folder)} · inside a room: ${FIT.deps_in_room == null ? "—" : pct(FIT.deps_in_room)}</div>
+    <div class="sub-h">Folders split across rooms</div>${list(FIT.splits, (s) => `→ ${s.parts.length} rooms`)}
+    <div class="sub-h">Rooms gathering several folders</div>${list(FIT.gathers, (s) => `← ${s.parts.length} folders`)}
+    <div class="sub-h">Files that work with another folder</div>${FIT.apart.length ? `<div class="rows">${FIT.apart.slice(0, 8).map((a) => `<div class="r"><span title="${esc(a.file)}">${esc(a.file.split("/").pop())} <span class="m">in</span> ${roomLink(a.folder)} <span class="m">→</span> ${roomLink(a.toward)}</span><span class="m">${pct(a.share)}</span></div>`).join("")}</div>` : '<div class="empty">none</div>'}`;
+}
+
+function select(rid) {
+  selected = rid || null;
+  document.querySelectorAll("#metrics tr").forEach((tr) => tr.classList.toggle("sel", tr.dataset.room === rid));
+  needs = true;
+  if (!rid || !ROOMS[rid]) { selected = null; return overview(); }
+  history.replaceState(null, "", "#" + rid);
+  const r = ROOMS[rid], files = roomFiles(rid);
+  const kv = (label, v, bad) => `<div>${label}<b class="${bad ? "bad" : ""}">${v}</b></div>`;
+  const out = V.links.filter((l) => l.a === rid && l.refs > 0).sort((a, b) => b.refs - a.refs);
+  const inn = V.links.filter((l) => l.b === rid && l.refs > 0).sort((a, b) => b.refs - a.refs);
+  const co = V.links.filter((l) => (l.a === rid || l.b === rid) && l.cochange > 0.5).sort((a, b) => b.cochange - a.cochange);
+  const magic = files.flatMap((f) => f.magic.map((m) => [f.path, ...m])).slice(0, 30);
+  const viol = files.flatMap((f) => f.violations.map((v) => [f.path, v]));
+  const swal = files.flatMap((f) => f.swallowed.map((l) => [f.path, l]));
+  const complex = files.flatMap((f) => f.complex.map((c) => [f.path, ...c])).sort((a, b) => b[3] - a[3]).slice(0, 10);
+  const clones = V.clones.filter((c) => c.a === rid || c.b === rid).sort((a, b) => b.n - a.n);
+  const maxLocF = Math.max(1, ...files.map((f) => f.loc));
+  const nCls = (V.classes[rid] || { classes: [] }).classes.length;
+  const tierName = (id) => TIERS[TIER_IX[ROOMS[id].tier]].label;
+  $("#panel").innerHTML = `<div class="eyebrow"><a href="#" id="back">Overview</a> / ${TIERS[TIER_IX[r.tier]].label}</div><h2>${esc(r.name)}</h2><div class="path">${esc(r.path)}</div>
+    <div class="sec"><button class="btn" id="open-classes" ${nCls ? "" : "disabled"}>⤢ Class diagram (${nCls} classes)</button></div>
+    <div class="sec"><div class="kv">
+      ${kv("lines of code", fmt(r.loc))}${kv("files", r.files.length)}${kv("functions", r.functions)}
+      ${kv("complexity avg", r.cx_avg)}${kv("complexity max", r.cx_max, r.cx_max >= 30)}${kv("duplicated", pct(r.dup), r.dup > 0.05)}
+      ${kv("magic / kLOC", r.magic_kloc, r.magic_kloc > 50)}${kv("swallowed", r.swallowed_n, r.swallowed_n > 5)}${kv("instability", r.instability ?? "—")}
+    </div></div>
+    ${sec("01", grouping === "room" ? "Its files, by folder" : "Its files, by room", partsOf(rid))}
+    ${sec("02", "Strata: the files, top to bottom", `<div class="rows">${files.slice(0, 40).map((f) => `<div class="r"><span title="${esc(f.path)}">${esc(f.path.split("/").pop())}<span class="chip">${LANG_NAME[f.lang] || f.lang}</span>${f.dup > 0.05 ? `<span class="chip flag">${pct(f.dup)} dup</span>` : ""}<div class="bar"><i style="width:${100 * f.loc / maxLocF}%;background:${stratumColor(f)}"></i></div></span><span class="m">${f.loc}</span></div>`).join("")}</div>`)}
+    ${sec("03", "Look at these functions", complex.length ? `<div class="rows">${complex.map(([p, n, l, c]) => `<div class="r"><span>${esc(p.split("/").pop())}:${l} <b>${esc(n)}</b></span><span class="m">complexity ${c}</span></div>`).join("")}</div>` : '<div class="empty">no function above 15</div>')}
+    ${sec("04", "Magic values", magic.length ? `<div class="rows">${magic.map(([p, l, k, v]) => `<div class="r"><span>${esc(p.split("/").pop())}:${l}</span><span class="m">${k === "address" ? "⌂ " : ""}${esc(v)}</span></div>`).join("")}</div>` : '<div class="empty">none</div>')}
+    ${sec("05", "Layer violations", viol.length ? `<div class="rows">${viol.map(([p, v]) => `<div class="r"><span>${esc(p.split("/").pop())}</span><span class="m flag">${esc(v)}</span></div>`).join("")}</div>` : '<div class="empty">none</div>')}
+    ${sec("06", "Swallowed errors", swal.length ? `<div class="rows">${swal.slice(0, 20).map(([p, l]) => `<div class="r"><span>${esc(p)}:${l}</span><span class="m">catches and moves on</span></div>`).join("")}</div>` : '<div class="empty">none</div>')}
+    ${sec("07", "Coupling", `<div class="rows">${out.slice(0, 8).map((l) => `<div class="r"><span>→ <a href="#" data-room="${l.b}">${esc(ROOMS[l.b].name)}</a> <span class="chip">${tierName(l.b)}</span></span><span class="m">${Math.round(l.refs)} refs</span></div>`).join("")}${inn.slice(0, 8).map((l) => `<div class="r"><span>← <a href="#" data-room="${l.a}">${esc(ROOMS[l.a].name)}</a> <span class="chip">${tierName(l.a)}</span></span><span class="m">${Math.round(l.refs)} refs</span></div>`).join("")}${co.slice(0, 6).map((l) => { const o = l.a === rid ? l.b : l.a; return `<div class="r"><span>⇢ <a href="#" data-room="${o}">${esc(ROOMS[o].name)}</a></span><span class="m">changes together ${l.cochange.toFixed(1)}</span></div>`; }).join("")}</div>`)}
+    ${sec("08", "Clones in other rooms", clones.length ? `<div class="rows">${clones.slice(0, 8).map((c) => { const o = c.a === rid ? c.b : c.a; return `<div class="r"><span>⟿ <a href="#" data-room="${o}">${esc(ROOMS[o].name)}</a></span><span class="m">${c.n} shared runs</span></div>`; }).join("")}</div>` : '<div class="empty">none</div>')}`;
+  $("#back").addEventListener("click", (e) => { e.preventDefault(); history.replaceState(null, "", "#"); select(null); });
+  $("#open-classes").addEventListener("click", () => openClasses(rid));
+  wire();
+}
+
+// ------------------------------------------------------------------ class diagram, in a large dialog
+// Laid out by ELK (layered: a base above the classes deriving from it, orthogonal edges, crossings minimised, the
+// connected parts packed together); classes linked to nothing are filed in a card of their file. The diagram keeps
+// its natural size: drag to pan, scroll to zoom, 0 to fit.
+const NS = "http://www.w3.org/2000/svg";
+const sv = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) e.setAttribute(k, v); if (parent) parent.appendChild(e); return e; };
+const FONT = { title: "600 12.5px Inter, system-ui, sans-serif", sub: "10px 'IBM Plex Mono', SFMono-Regular, monospace", m: "10.5px 'IBM Plex Mono', SFMono-Regular, monospace", file: "600 11.5px 'IBM Plex Mono', SFMono-Regular, monospace" };
+const measure = (() => { const c = document.createElement("canvas").getContext("2d"); return (s, f) => { c.font = f; return c.measureText(s).width; }; })();
+const fit1 = (s, f, w) => { if (measure(s, f) <= w) return s; while (s.length > 2 && measure(s + "…", f) > w) s = s.slice(0, -1); return s + "…"; };
+const MAX_METHODS = 10, MAX_CLASSES = 400;
+let elk = null, diagramRun = 0;
+
+function card(c, id, fold) {
+  const sub = `${c.file.split("/").pop()} · ${c.lines} lines`, ms = c.methods.slice(0, MAX_METHODS);
+  const note = fold ? [fold.in.length ? `used by ${fold.in.length}` : "", fold.out.length ? `uses ${fold.out.length}` : ""].filter(Boolean).join(" · ") + " here" : "";
+  const w = Math.round(Math.min(320, Math.max(150, measure(c.name, FONT.title) + 26, measure(sub, FONT.sub) + 26, note ? measure(note, FONT.sub) + 26 : 0, ...ms.map((m) => measure(m + "()", FONT.m) + 26))));
+  return { c, id, sub, note, w, h: 42 + ms.length * 13 + (c.methods.length > MAX_METHODS ? 13 : 0) + (note ? 15 : 0) + 4 };
+}
+
+async function openClasses(rid) {
+  const r = ROOMS[rid], run = ++diagramRun;
+  const m = V.classes[rid];
+  $("#m-title").textContent = r.name;
+  $("#m-path").textContent = `${TIERS[TIER_IX[r.tier]].label} · ${r.path}`;
+  $("#modal").classList.add("open");
+  const body = $("#m-body");
+  if (!m || !m.classes.length) { body.innerHTML = '<div class="empty" style="padding:22px">no classes: functions only</div>'; return; }
+  body.innerHTML = `<div class="empty" style="padding:22px">laying out ${m.classes.length} classes…</div>`;
+  try {
+    const d = await classDiagram(m, body.clientWidth / Math.max(1, body.clientHeight));
+    if (run !== diagramRun) return;
+    body.innerHTML = ""; body.appendChild(d.svg);
+    body.insertAdjacentHTML("beforeend", `<div class="m-hint">drag to pan · scroll to zoom · 0 fit · 1 actual size · hover a class for its links${d.hidden ? ` · ${d.hidden} smaller classes not drawn` : ""}</div>`);
+    panZoom(d.svg, body, d.w, d.h, d.focus);
+  } catch (err) {
+    body.innerHTML = `<div class="empty" style="padding:22px">the layout failed: ${esc(err && err.message || err)}</div>`;
+  }
+}
+function closeModal() { $("#modal").classList.remove("open"); diagramRun++; zoomKeys = null; }
+$("#m-close").addEventListener("click", closeModal);
+$("#modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { closeModal(); $("#help").classList.remove("open"); $("#help-btn").setAttribute("aria-expanded", false); }
+  else if (zoomKeys && $("#modal").classList.contains("open")) zoomKeys(e);
+});
+
+async function classDiagram(m, aspect) {
+  const cls = [...m.classes].sort((a, b) => b.lines - a.lines).slice(0, MAX_CLASSES);
+  const idOf = {}, byId = {};
+  cls.forEach((c, i) => { const id = "c" + i; byId[id] = c; if (!(c.name in idOf)) idOf[c.name] = id; });
+  const ext = m.ext || {}, edges = [], seen = new Set(), stubNames = {};
+  for (const e of m.edges) {
+    const s = idOf[e.from];
+    let t = idOf[e.to];
+    if (!s || e.from === e.to) continue;
+    if (!t) { if (e.kind !== "inherits" || !ext[e.to]) continue; t = "x:" + ext[e.to]; (stubNames[t] ||= new Set()).add(e.to); }
+    if (seen.has(s + ">" + t)) continue;
+    seen.add(s + ">" + t);
+    edges.push({ id: "e" + edges.length, sources: [s], targets: [t], kind: e.kind });
+  }
+  // a class used by (or using) many others here: those links folded into a note on its card, lit on hover,
+  // instead of a sheaf of lines across the whole diagram
+  const FOLD = 6, usesIn = {}, usesOut = {}, folded = {};
+  for (const e of edges) if (e.kind !== "inherits") { (usesIn[e.targets[0]] ||= []).push(e); (usesOut[e.sources[0]] ||= []).push(e); }
+  for (let i = edges.length - 1; i >= 0; i--) {
+    const e = edges[i], src = e.sources[0], t = e.targets[0];
+    if (e.kind === "inherits" || ((usesIn[t] || []).length < FOLD && (usesOut[src] || []).length < FOLD)) continue;
+    (folded[t] ||= { in: [], out: [] }).in.push(src); (folded[src] ||= { in: [], out: [] }).out.push(t);
+    edges.splice(i, 1);
+  }
+  // siblings: classes deriving from the same bases, with no other links, drawn as one box of them (a
+  // generalisation set) with one edge per base, so a base with many classes does not make a row miles wide
+  const deg = {};
+  for (const e of edges) { (deg[e.sources[0]] ||= { out: [], inn: 0, uses: 0 }).out.push(e); (deg[e.targets[0]] ||= { out: [], inn: 0, uses: 0 }).inn++; if (e.kind !== "inherits") { deg[e.sources[0]].uses++; deg[e.targets[0]].uses++; } }
+  const sib = {};
+  for (const [id, d] of Object.entries(deg)) if (id.startsWith("c") && !d.inn && !d.uses && d.out.length) (sib[d.out.map((e) => e.targets[0]).sort().join("|")] ||= []).push(id);
+  const grouped = {};
+  for (const [key, ids] of Object.entries(sib)) if (ids.length >= 4) {
+    const gid = "g:" + key;
+    ids.forEach((id) => { grouped[id] = gid; });
+    for (const t of key.split("|")) edges.push({ id: "e" + edges.length, sources: [gid], targets: [t], kind: "inherits" });
+  }
+  for (let i = edges.length - 1; i >= 0; i--) if (grouped[edges[i].sources[0]]) edges.splice(i, 1);
+  const linked = new Set(edges.flatMap((e) => [e.sources[0], e.targets[0]]));
+  const files = [...new Set(cls.map((c) => c.file))];
+  const hue = Object.fromEntries(files.map((f, i) => [f, (205 + i * 137.508) % 360]));
+  const nodes = [];
+  cls.forEach((c, i) => { if (linked.has("c" + i)) { const k = card(c, "c" + i, folded["c" + i]); nodes.push({ id: "c" + i, width: k.w, height: k.h, kind: "class", k }); } });
+  const members = {};
+  cls.forEach((c, i) => { if (grouped["c" + i]) (members[grouped["c" + i]] ||= []).push(card(c, "c" + i, folded["c" + i])); });
+  for (const [gid, ks] of Object.entries(members)) {
+    const bases = gid.slice(2).split("|").map((t) => t.startsWith("x:") ? (anyRoom(t.slice(2)) || { name: "another room" }).name : byId[t].name);
+    ks.sort((a, b) => a.c.name.localeCompare(b.c.name));
+    nodes.push(gridCard(gid, ks, `${ks.length} classes`, `deriving from ${bases.join(", ")}`, "", Math.min(6, Math.ceil(Math.sqrt(ks.length * 1.8)))));
+  }
+  // bases from other rooms: one stub per room, naming the bases
+  for (const t of linked) if (t.startsWith("x:")) {
+    const room = t.slice(2), R = anyRoom(room), name = R ? R.name : room, names = [...stubNames[t]].sort();
+    const shown = names.slice(0, MAX_METHODS), more = names.length - shown.length;
+    const where = R ? `${TIERS[TIER_IX[R.tier]].label} · another room` : "another room";
+    nodes.push({ id: t, width: Math.round(Math.min(320, Math.max(140, measure(name, FONT.title) + 26, measure(where, FONT.sub) + 26, ...shown.map((n) => measure(n, FONT.m) + 26)))),
+      height: 38 + shown.length * 13 + (more > 0 ? 13 : 0) + 4, kind: "stub", name, where, names: shown, more });
+  }
+  // classes linked to nothing: a card per file, its classes in a grid
+  const byFile = {};
+  cls.forEach((c, i) => { if (!linked.has("c" + i) && !grouped["c" + i]) (byFile[c.file] ||= []).push(card(c, "c" + i, folded["c" + i])); });
+  const loose = {}, single = [];
+  for (const [f, ks] of Object.entries(byFile)) if (ks.length > 1) loose[f] = ks; else single.push(...ks);
+  if (single.length) loose[""] = single.sort((a, b) => a.c.file.localeCompare(b.c.file));
+  for (const [f, ks] of Object.entries(loose)) {
+    nodes.push(gridCard("f:" + f, ks, f ? f.split("/").pop() : "one class per file", `${ks.length} ${ks.length === 1 ? "class" : "classes"} · no links`, f, Math.min(4, Math.ceil(Math.sqrt(ks.length)))));
+  }
+  const parent = {}, find = (x) => parent[x] === undefined || parent[x] === x ? (parent[x] = x) : (parent[x] = find(parent[x]));
+  for (const e of edges) parent[find(e.sources[0])] = find(e.targets[0]);
+  const partSize = {};
+  for (const n of nodes) { const r = find(n.id); partSize[r] = (partSize[r] || 0) + n.width * n.height; }
+  const rank = (n) => n.id.startsWith("f:") ? -1 : partSize[find(n.id)];
+  nodes.sort((a, b) => rank(b) - rank(a) || (find(a.id) < find(b.id) ? -1 : find(a.id) > find(b.id) ? 1 : 0));
+  const main = nodes.length && !nodes[0].id.startsWith("f:") ? find(nodes[0].id) : null;
+  const graph = (dir) => ({
+    id: "root",
+    layoutOptions: {
+      "elk.algorithm": "layered", "elk.direction": dir, "elk.edgeRouting": "ORTHOGONAL",
+      "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX", "elk.layered.thoroughness": "25",
+      "elk.layered.crossingMinimization.greedySwitch.type": "TWO_SIDED",
+      "elk.spacing.nodeNode": "26", "elk.layered.spacing.nodeNodeBetweenLayers": "58",
+      "elk.spacing.edgeNode": "18", "elk.spacing.edgeEdge": "9", "elk.layered.spacing.edgeNodeBetweenLayers": "18", "elk.layered.spacing.edgeEdgeBetweenLayers": "9",
+      "elk.separateConnectedComponents": "true", "elk.spacing.componentComponent": "54",
+      "elk.layered.considerModelOrder.components": "MODEL_ORDER",
+      "elk.aspectRatio": String(Math.max(1, Math.min(3, aspect))), "elk.padding": "[top=30,left=30,bottom=30,right=30]",
+    },
+    children: nodes.map((n) => ({ id: n.id, width: n.width, height: n.height })),
+    edges: edges.map((e) => ({ id: e.id, sources: e.sources, targets: e.targets })),
+  });
+  // bases above their classes, as is usual; bases to the right when that fits the window much better (a base
+  // with many classes deriving from it makes a row too wide to read)
+  elk ||= new ELK();
+  const tries = await Promise.all((edges.length ? ["UP", "RIGHT"] : ["UP"]).map((d) => elk.layout(graph(d))));
+  const misfit = (o, i) => Math.abs(Math.log((o.width / o.height) / aspect)) + Math.log(Math.max(1, o.width * o.height / 4e6)) + (i ? 0.6 : 0);
+  const out = tries.reduce((best, o, i) => misfit(o, i) < misfit(best, tries.indexOf(best)) ? o : best);
+  const W = Math.ceil(out.width), H = Math.ceil(out.height);
+  const svg = sv("svg", { class: "diagram", width: "100%", height: "100%" });
+  const vp = sv("g", { class: "vp" }, svg);
+  const at = Object.fromEntries(out.children.map((n) => [n.id, n]));
+  const kinds = Object.fromEntries(edges.map((e) => [e.id, e.kind]));
+  const edgeEls = [];
+  const gE = sv("g", {}, vp), gN = sv("g", {}, vp);
+  for (const e of out.edges || []) {
+    for (const s of e.sections || []) {
+      const pts = [s.startPoint, ...(s.bendPoints || []), s.endPoint].map((p) => [p.x, p.y]);
+      const kind = kinds[e.id], inh = kind === "inherits";
+      const g = sv("g", { "data-s": e.sources[0], "data-t": e.targets[0] }, gE);
+      sv("path", { d: roundedPath(pts, 7), fill: "none", stroke: inh ? "#5d5660" : "#a89f99", "stroke-width": inh ? 1.4 : 1, "stroke-dasharray": inh ? null : "5 4" }, g);
+      const [p, q] = [pts[pts.length - 2], pts[pts.length - 1]], a = Math.atan2(q[1] - p[1], q[0] - p[0]);
+      const tri = (l, w) => [[q[0], q[1]], [q[0] - l * Math.cos(a) + w * Math.sin(a), q[1] - l * Math.sin(a) - w * Math.cos(a)], [q[0] - l * Math.cos(a) - w * Math.sin(a), q[1] - l * Math.sin(a) + w * Math.cos(a)]];
+      if (inh) sv("path", { d: `M${tri(11, 6).map((v) => v.join(" ")).join(" L")} Z`, fill: "#fffdf8", stroke: "#5d5660", "stroke-width": 1.3 }, g);
+      else { const [t0, t1, t2] = tri(8, 4.5); sv("path", { d: `M${t1.join(" ")} L${t0.join(" ")} L${t2.join(" ")}`, fill: "none", stroke: "#a89f99", "stroke-width": 1.1 }, g); }
+      edgeEls.push(g);
+    }
+  }
+  const cardEls = {};
+  const drawCard = (parent, k, x, y, id) => {
+    const g = sv("g", { class: "cls", "data-id": id || "" }, parent), c = k.c;
+    cardEls[k.id] = g;
+    sv("rect", { x, y, width: k.w, height: k.h, rx: 6, fill: "#fffdf8", stroke: "#b9b1aa" }, g);
+    sv("rect", { x, y: y + 6, width: 3.5, height: k.h - 12, rx: 1.75, fill: `hsl(${hue[c.file]},38%,60%)` }, g);
+    sv("rect", { x: x + 10, y: y + 1, width: Math.max(4, Math.min(k.w - 20, c.lines / 4)), height: 2.5, rx: 1.25, fill: "#ee7138", "fill-opacity": 0.75 }, g);
+    sv("text", { x: x + 12, y: y + 19, font: FONT.title, style: `font:${FONT.title}`, fill: "#303038" }, g).textContent = fit1(c.name, FONT.title, k.w - 22);
+    sv("text", { x: x + 12, y: y + 33, style: `font:${FONT.sub}`, fill: "#89838b" }, g).textContent = fit1(k.sub, FONT.sub, k.w - 22);
+    const y0 = k.note ? y + 15 : y;
+    if (k.note) sv("text", { x: x + 12, y: y + 47, style: `font:${FONT.sub}`, fill: "#c2432b" }, g).textContent = "⇠ " + k.note;
+    c.methods.slice(0, MAX_METHODS).forEach((mt, i) => { sv("text", { x: x + 12, y: y0 + 50 + i * 13, style: `font:${FONT.m}`, fill: "#5d5660" }, g).textContent = fit1(mt + "()", FONT.m, k.w - 22); });
+    if (c.methods.length > MAX_METHODS) sv("text", { x: x + 12, y: y0 + 50 + MAX_METHODS * 13, style: `font:${FONT.sub}`, fill: "#89838b" }, g).textContent = `+ ${c.methods.length - MAX_METHODS} more`;
+    sv("title", {}, g).textContent = `${c.name} (${c.file}:${c.line})\nbases: ${c.bases.join(", ") || "—"}\nmethods: ${c.methods.join(", ") || "—"}`;
+    return g;
+  };
+  for (const n of nodes) {
+    const p = at[n.id];
+    if (!p) continue;
+    if (n.kind === "class") drawCard(gN, n.k, p.x, p.y, n.id);
+    else if (n.kind === "stub") {
+      const g = sv("g", { class: "cls", "data-id": n.id }, gN);
+      sv("rect", { x: p.x, y: p.y, width: n.width, height: n.height, rx: 6, fill: "#f3eee6", stroke: "#a89f99", "stroke-dasharray": "4 3" }, g);
+      sv("text", { x: p.x + 12, y: p.y + 18, style: `font:${FONT.title}`, fill: "#5d5660" }, g).textContent = fit1(n.name, FONT.title, n.width - 22);
+      sv("text", { x: p.x + 12, y: p.y + 32, style: `font:${FONT.sub}`, fill: "#89838b" }, g).textContent = n.where;
+      n.names.forEach((b, i) => { sv("text", { x: p.x + 12, y: p.y + 48 + i * 13, style: `font:${FONT.m}`, fill: "#5d5660" }, g).textContent = fit1(b, FONT.m, n.width - 22); });
+      if (n.more > 0) sv("text", { x: p.x + 12, y: p.y + 48 + n.names.length * 13, style: `font:${FONT.sub}`, fill: "#89838b" }, g).textContent = `+ ${n.more} more`;
+      sv("title", {}, g).textContent = `bases from ${n.name}: ${[...stubNames[n.id]].sort().join(", ")}`;
+    } else {
+      const grp = n.id.startsWith("g:"), g = sv("g", grp ? { class: "cls", "data-id": n.id } : {}, gN);
+      sv("rect", { x: p.x, y: p.y, width: n.width, height: n.height, rx: 10, fill: grp ? "#ece6f0" : "#efe9e0", stroke: grp ? "#b9b0c8" : "#d8d3cc" }, g);
+      sv("text", { x: p.x + 12, y: p.y + 19, style: `font:${FONT.file}`, fill: "#5d5660" }, g).textContent = n.head;
+      sv("text", { x: p.x + n.width - 12, y: p.y + 19, "text-anchor": "end", style: `font:${FONT.sub}`, fill: "#89838b" }, g).textContent = n.note;
+      sv("title", {}, g).textContent = grp ? `${n.head} ${n.note}` : n.file || "classes linked to nothing here, each alone in its file";
+      for (const k of n.ks) drawCard(g, k, p.x + k.x, p.y + k.y, k.id);
+    }
+  }
+  // hover a class: its links stay, the rest fade
+  gN.querySelectorAll("g.cls[data-id]").forEach((g) => {
+    const id = g.dataset.id;
+    if (!id) return;
+    const partners = folded[id] ? [...folded[id].in, ...folded[id].out] : [];
+    g.addEventListener("pointerenter", (ev) => {
+      ev.stopPropagation();
+      for (const e of edgeEls) e.style.opacity = e.dataset.s === id || e.dataset.t === id ? 1 : 0.12;
+      for (const q of partners) cardEls[q] && cardEls[q].classList.add("lit");
+    });
+    g.addEventListener("pointerleave", () => { for (const e of edgeEls) e.style.opacity = 1; for (const q of partners) cardEls[q] && cardEls[q].classList.remove("lit"); });
+  });
+  // where to look first: the most linked class of the biggest connected part
+  const links = {};
+  for (const e of edges) for (const id of [e.sources[0], e.targets[0]]) links[id] = (links[id] || 0) + 1;
+  for (const [id, f] of Object.entries(folded)) links[id] = (links[id] || 0) + f.in.length + f.out.length;
+  const hubNode = main && out.children.filter((n) => find(n.id) === main).sort((a, b) => (links[b.id] || 0) - (links[a.id] || 0))[0];
+  const mainBox = hubNode && [hubNode.x, hubNode.y, hubNode.x + hubNode.width, hubNode.y + hubNode.height];
+  return { svg, w: W, h: H, hidden: m.classes.length - cls.length, focus: mainBox };
+}
+
+function gridCard(id, ks, head, note, file, cols) {
+  const colW = [], rowH = [], P = 12, G = 12, HEAD = 30;
+  ks.forEach((k, i) => { colW[i % cols] = Math.max(colW[i % cols] || 0, k.w); rowH[Math.floor(i / cols)] = Math.max(rowH[Math.floor(i / cols)] || 0, k.h); });
+  ks.forEach((k, i) => { const cI = i % cols, rI = Math.floor(i / cols); k.x = P + colW.slice(0, cI).reduce((s, v) => s + v + G, 0); k.y = HEAD + rowH.slice(0, rI).reduce((s, v) => s + v + G, 0); });
+  const w = Math.max(P * 2 + colW.reduce((s, v) => s + v, 0) + G * (colW.length - 1), measure(head, FONT.file) + measure(note, FONT.sub) + 44);
+  return { id, width: Math.round(w), height: Math.round(HEAD + rowH.reduce((s, v) => s + v, 0) + G * (rowH.length - 1) + P), kind: "file", file, head, note, ks };
+}
+
+function roundedPath(pts, r) {
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [p, c, n] = [pts[i - 1], pts[i], pts[i + 1]];
+    const d1 = Math.hypot(c[0] - p[0], c[1] - p[1]), d2 = Math.hypot(n[0] - c[0], n[1] - c[1]), k = Math.min(r, d1 / 2, d2 / 2);
+    if (k < 0.5) { d += ` L${c[0]} ${c[1]}`; continue; }
+    const a = [c[0] + (p[0] - c[0]) * k / d1, c[1] + (p[1] - c[1]) * k / d1], b = [c[0] + (n[0] - c[0]) * k / d2, c[1] + (n[1] - c[1]) * k / d2];
+    d += ` L${a[0]} ${a[1]} Q${c[0]} ${c[1]} ${b[0]} ${b[1]}`;
+  }
+  const q = pts[pts.length - 1];
+  return d + ` L${q[0]} ${q[1]}`;
+}
+
+// pan and zoom: screen = diagram × s + (tx, ty)
+let zoomKeys = null;
+function panZoom(svg, host, W, H, focus) {
+  const vp = svg.querySelector("g.vp");
+  $("#m-zoom").innerHTML = `<button class="btn" data-z="out" title="zoom out (−)">−</button><span id="m-zoom-level" class="zl"></span><button class="btn" data-z="in" title="zoom in (+)">+</button><button class="btn" data-z="fit" title="fit (0)">Fit</button><button class="btn" data-z="1" title="actual size (1)">1:1</button>`;
+  let s = 1, tx = 0, ty = 0;
+  const size = () => [host.clientWidth, host.clientHeight];
+  const apply = () => { vp.setAttribute("transform", `translate(${tx} ${ty}) scale(${s})`); $("#m-zoom-level").textContent = Math.round(s * 100) + "%"; };
+  const fit = () => { const [w, h] = size(); s = Math.min(2, Math.min(w / W, h / H) * 0.96); tx = (w - W * s) / 2; ty = (h - H * s) / 2; apply(); };
+  const actual = () => { // 1:1, on the most linked class (kept within the diagram's edges)
+    const [w, h] = size(), [x0, y0, x1, y1] = focus || [0, 0, W, H];
+    s = 1; tx = W <= w ? (w - W) / 2 : Math.min(16, Math.max(w - W - 16, w / 2 - (x0 + x1) / 2)); ty = H <= h ? (h - H) / 2 : Math.min(16, Math.max(h - H - 16, h / 3 - (y0 + y1) / 2)); apply();
+  };
+  const zoomAt = (k, cx, cy) => { const n = Math.max(0.08, Math.min(4, s * k)); tx = cx - (cx - tx) * n / s; ty = cy - (cy - ty) * n / s; s = n; apply(); };
+  // start readable: fit when that keeps the text legible, else actual size from the top
+  { const [w, h] = size(); if (Math.min(w / W, h / H) >= 0.62) fit(); else actual(); }
+  svg.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const r = svg.getBoundingClientRect();
+    if (!e.ctrlKey && e.deltaMode === 0 && Math.abs(e.deltaX) > 0) { tx -= e.deltaX; ty -= e.deltaY; apply(); return; } // trackpad: two fingers pan
+    zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  let drag = null;
+  svg.addEventListener("pointerdown", (e) => { drag = [e.clientX, e.clientY, tx, ty]; svg.setPointerCapture(e.pointerId); svg.classList.add("grabbing"); });
+  svg.addEventListener("pointermove", (e) => { if (!drag) return; tx = drag[2] + e.clientX - drag[0]; ty = drag[3] + e.clientY - drag[1]; apply(); });
+  const up = () => { drag = null; svg.classList.remove("grabbing"); };
+  svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+  const centre = () => { const [w, h] = size(); return [w / 2, h / 2]; };
+  $("#m-zoom").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    const z = b.dataset.z;
+    if (z === "fit") fit(); else if (z === "1") actual(); else zoomAt(z === "in" ? 1.25 : 0.8, ...centre());
+  }));
+  zoomKeys = (e) => {
+    const step = 60;
+    if (e.key === "0") fit(); else if (e.key === "1") actual();
+    else if (e.key === "+" || e.key === "=") zoomAt(1.25, ...centre()); else if (e.key === "-") zoomAt(0.8, ...centre());
+    else if (e.key === "ArrowLeft") tx += step; else if (e.key === "ArrowRight") tx -= step; else if (e.key === "ArrowUp") ty += step; else if (e.key === "ArrowDown") ty -= step;
+    else return;
+    e.preventDefault(); apply();
+  };
+  apply();
+}
+
+// ------------------------------------------------------------------ the metrics table and the matrix
+const COLS = [
+  ["name", "Room", null],
+  ["tier", "Tier", "the platform: presentation, application, domain, data, integration (detected from what the files use)"],
+  ["loc", "LOC", "lines of code (no blanks, no comments)", 0],
+  ["files", "Files", null, 0],
+  ["cx_avg", "CX avg", "average cyclomatic complexity of a function", 1],
+  ["cx_max", "CX max", "the most complex function", 1],
+  ["complex_n", "Complex", "functions with complexity ≥ 15", 1],
+  ["dup", "Dup", "share of code inside a run of ≥ 60 tokens that occurs elsewhere too", 1],
+  ["magic_kloc", "Magic", "unnamed literal values per 1000 lines (numbers other than 0, 1, 2…, addresses, paths)", 1],
+  ["swallowed_n", "Swallowed", "handlers that catch everything and carry on", 1],
+  ["ce", "Ce", "efferent coupling: rooms this one depends on", 1],
+  ["ca", "Ca", "afferent coupling: rooms that depend on this one", 0],
+  ["instability", "I", "instability Ce / (Ca + Ce): 0 = everything depends on it, 1 = depends on everything", 0],
+  ["distance", "D", "distance from the main sequence |A + I − 1|: high = rigid concrete code many depend on, or abstractions nobody uses", 1],
+  ["mutual", "Mutual", "rooms this one depends on that also depend on it: neither can change alone", 1],
+  ["fit", "Fit", "share of the room's code in its biggest counterpart: in one folder (by dependencies), in one room (by folders); low = the folders and the code disagree here", -1],
+  ["violations_n", "Violations", "files that mix concerns their layer should not carry (domain code that stores or talks to the network, UI that stores data)", 1],
+  ["churn", "Churn", "commits touching the room in the last 30 days", 1],
+  ["hotspot", "Hotspot", "churn × total complexity / 100: changed often and hard to read — review first", 1],
+];
+let sortKey = "hotspot", sortDir = -1;
+function value(r, k) {
+  if (k === "files") return r.files.length;
+  if (k === "tier") return TIER_IX[r.tier];
+  if ((k === "instability" || k === "distance") && r[k] == null) return -1;
+  if (k === "name") return r.name.toLowerCase();
+  return r[k];
+}
+function table() {
+  const T = $("#metrics");
+  const ranges = {};
+  for (const [k] of COLS) { const v = IDS.map((r) => value(ROOMS[r], k)).filter((x) => typeof x === "number" && x !== -1); ranges[k] = [Math.min(...v), Math.max(...v)]; }
+  const ids = [...IDS].sort((a, b) => { const x = value(ROOMS[a], sortKey), y = value(ROOMS[b], sortKey); return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
+  T.innerHTML = `<thead><tr>${COLS.map(([k, label0, hint]) => [k, k === "name" ? (grouping === "room" ? "Room" : "Folder") : label0, hint]).map(([k, label, hint]) => `<th data-k="${k}" ${k === sortKey ? `data-sorted="${sortDir > 0 ? "asc" : "desc"}"` : ""}>${hint ? `<abbr title="${esc(hint)}">${label}</abbr>` : label}</th>`).join("")}</tr></thead><tbody>${ids.map((id) => {
+    const r = ROOMS[id];
+    return `<tr data-room="${id}" class="${id === selected ? "sel" : ""}">${COLS.map(([k, , , dir]) => {
+      const v = value(r, k);
+      if (k === "name") return `<td class="room">${esc(r.name)}</td>`;
+      if (k === "tier") return `<td><span class="chip" style="background:${TIER_COLOR[r.tier]}">${TIERS[TIER_IX[r.tier]].label}</span></td>`;
+      if (v === -1) return `<td class="empty" title="no references to or from other rooms">—</td>`;
+      const [lo, hi] = ranges[k] || [0, 1];
+      const t = hi > lo ? (v - lo) / (hi - lo) : 0;
+      const shown = k === "dup" ? pct(v) : k === "loc" ? fmt(v) : k === "hotspot" ? fmt(Math.round(v)) : v;
+      const heat = dir === -1 ? 1 - t : t, shownF = k === "fit" ? pct(v) : shown;
+      return `<td style="background:${dir ? warm(heat * 0.95) : "transparent"};color:${dir && heat > 0.62 ? "#fff" : "inherit"}">${shownF}</td>`;
+    }).join("")}</tr>`;
+  }).join("")}</tbody>`;
+  T.querySelectorAll("th").forEach((th) => th.addEventListener("click", () => { const k = th.dataset.k; sortDir = k === sortKey ? -sortDir : -1; sortKey = k; table(); }));
+  T.querySelectorAll("tbody tr").forEach((tr) => tr.addEventListener("click", () => { select(tr.dataset.room); window.scrollTo({ top: 0, behavior: "smooth" }); }));
+}
+function coupling() {
+  const T = $("#coupling"), ids = IDS;
+  const get = (a, b) => V.links.find((l) => l.a === a && l.b === b);
+  const co = (a, b) => V.links.find((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a));
+  const max = Math.max(...V.links.map((l) => l.refs));
+  T.innerHTML = `<thead><tr><th></th>${ids.map((id, i) => `<th style="text-align:center;padding:6px 0;font:10px var(--mono)" title="${esc(ROOMS[id].name)}">${i + 1}</th>`).join("")}</tr></thead><tbody>${ids.map((a, i) => `<tr><td style="text-align:left;padding:0 8px;width:auto;font:11px var(--mono);white-space:nowrap;border-left:4px solid ${TIER_COLOR[ROOMS[a].tier]}"><span style="color:var(--muted);display:inline-block;width:20px">${i + 1}</span>${esc(ROOMS[a].name)}</td>${ids.map((b) => {
+    if (a === b) return `<td style="background:#efeae3"></td>`;
+    const l = get(a, b), c = co(a, b), t = l ? Math.sqrt(l.refs / max) : 0;
+    const dot = c && c.cochange > 0.5 ? `<div style="width:5px;height:5px;border-radius:50%;background:#8f8bb3;margin:auto"></div>` : "";
+    return `<td title="${esc(ROOMS[a].name)} → ${esc(ROOMS[b].name)}: ${l ? Math.round(l.refs) + " refs" : "no refs"}${c ? ", changes together " + c.cochange.toFixed(1) : ""}" style="background:${l ? warm(t) : "#fbf8f3"}">${dot}</td>`;
+  }).join("")}</tr>`).join("")}</tbody>`;
+}
+
+$("#notes").innerHTML = `
+<p><b>Why these.</b> Much of this code was written by AI faster than it can be reviewed. The map does not judge the code; it points at where a reviewer's hour is best spent.</p>
+<p><b>Tiers</b> are detected, not declared: a file that draws UI is presentation; one that serves or calls HTTP, or is a command line, is application; one that uses a database or the file system is data; one that drives another program's API (a CAD host, an IFC toolkit) is integration; the rest is domain. Where the code shows nothing, the path can (a <code>store</code>, a <code>server</code>, a <code>views/</code> folder). A room never spans two tiers, so a component (a folder) appears on every platform it has code on, at the same spot.</p>
+<p><b>Hotspots</b> first: code that changes often and is complex is where bugs live (Tornhill). <b>Swallowed errors</b> hide failures. <b>Magic values</b> are decisions nobody named. <b>Duplication</b> is the same logic in several places, which drifts apart.</p>
+<p><b>Coupling</b>: Ce and Ca count rooms, not references. A room many depend on (low I) should be stable and abstract; <b>D</b> measures how far it is from that. <b>Cycles</b> mean none of the rooms in them can change alone. Changing together without referencing each other (dots in the matrix) is hidden coupling.</p>
+<p><b>Folders vs rooms</b>: the folders are how people filed the code; the rooms are what the code does. Where they agree, the structure holds. A folder split across rooms may be doing two jobs; a room gathering folders may be a module nobody named; a file whose dependencies all live in another folder may be in the wrong place. The <i>agreement</i> is the normalised mutual information of the two groupings (by lines of code), the <i>Fit</i> column the share of a room's code in its biggest counterpart.</p>
+<p><b>Layout</b>: derived anew on every run (fixed seeds, so it stays the same while the code does); <code>[anchors]</code> in the config (<code>codemap.toml</code>) pull a component toward a side. What is mapped is set by <code>include</code> and <code>exclude</code> in the config.</p>`;
+$("#footer").textContent = `generated ${DATA.generated} from ${DATA.branch} @ ${DATA.commit} by codemap`;
+
+const params = new URLSearchParams(location.search);
+if (["lang", "folder", "churn", "dup", "cx"].includes(params.get("strata"))) colorBy = params.get("strata");
+const fromHash = decodeURIComponent(location.hash.slice(1));
+if (params.get("rooms") === "folder" || viewOf(fromHash) === "folder" || viewOf(params.get("classes")) === "folder") useView("folder");
+const startView = ["top", "axo", "persp", "front"].includes(params.get("view")) ? params.get("view") : "axo";
+if (ROOMS[params.get("classes")]) setTimeout(() => openClasses(params.get("classes")), 0);
+for (const [id, attr, v] of [["view-tabs", "v", startView], ["color-tabs", "c", colorBy], ["group-tabs", "g", grouping]])
+  document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute("aria-pressed", b.dataset[attr] === v));
+const cutParam = TIERS.findIndex((t) => t.id === params.get("cut"));
+if (cutParam >= 0) cut = cutParam;
+build(); legend(); cutUI(); resize(); setView(startView); table(); coupling();
+select(ROOMS[fromHash] ? fromHash : null);
+if (fromHash === "metrics") document.querySelector(".below").scrollIntoView();
+window.addEventListener("resize", resize);
+loop();
+</script>
+</body>
+</html>

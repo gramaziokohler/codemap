@@ -1,0 +1,18 @@
+name: check
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  map-itself:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: map
+        uses: ./
+        with:
+          config: examples/codemap.toml
+      - run: test -s "${{ steps.map.outputs.page }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codemap
+          path: codemap/

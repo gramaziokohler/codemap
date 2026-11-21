@@ -1,0 +1,17 @@
+# A code map's config: everything that is about one repository. All keys are optional.
+title = "My project"
+rooms = 20          # how many rooms to aim for (by dependencies), over all tiers
+
+include = ["*.py", "*.cs", "*.cpp", "*.hpp", "*.h", "*.ts", "*.tsx", "*.js", "*.mjs", "*.cjs"]
+exclude = ["docs/*", "tests/*", "*/tests/*", "*/test_*.py", "*.test.ts", "*/node_modules/*", "*/build/*", "vendor/*"]
+generated = []      # shown and counted, but left out of duplication and hotspots
+
+# Anchoring hints: pull a component (a folder, three levels deep or less) toward a side of every platform.
+# x from -1 (west) to 1 (east), y from -1 (north, the back) to 1 (south, the front).
+[anchors]
+# "src/app/ui" = [0.0, -1.0]
+
+# Tiers by hand, where the detection gets a file wrong: a glob per file, the first match wins.
+# Tiers: presentation, application, domain, data, integration.
+[tiers]
+# "src/app/store/*.py" = "data"

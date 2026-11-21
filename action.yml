@@ -1,0 +1,40 @@
+name: codemap
+description: >-
+  A spatial map of a code base: files sorted into tiers, grouped into rooms by what the code does and by its
+  folders, measured (size, complexity, coupling, duplication, magic values, hotspots), as one static HTML page.
+branding:
+  icon: map
+  color: orange
+inputs:
+  config:
+    description: The map's config (TOML), relative to the workspace.
+    default: codemap.toml
+  root:
+    description: The repository to map. Check it out with fetch-depth 0, so the history (churn, co-change) is there.
+    default: .
+  out:
+    description: The folder to write index.html into.
+    default: codemap
+  json:
+    description: Also write the model as JSON to this file (optional).
+    default: ""
+outputs:
+  page:
+    description: The path of the generated page.
+    value: ${{ steps.map.outputs.page }}
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v6
+    - id: map
+      shell: bash
+      env:
+        CONFIG: ${{ inputs.config }}
+        ROOT: ${{ inputs.root }}
+        OUT: ${{ inputs.out }}
+        JSON: ${{ inputs.json }}
+      run: |
+        args=(--config "$CONFIG" --root "$ROOT" --out "$OUT")
+        if [ -n "$JSON" ]; then args+=(--json "$JSON"); fi
+        uv run --script "$GITHUB_ACTION_PATH/codemap.py" "${args[@]}"
+        echo "page=$OUT/index.html" >> "$GITHUB_OUTPUT"
