@@ -36,7 +36,6 @@ a { color: inherit; }
 .fitnum b { font: 600 26px var(--sans); letter-spacing: -.02em; color: var(--ink); }
 .fitnum span { font: 11px var(--mono); color: var(--muted); }
 .sub-h { font: 600 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); margin: 12px 0 2px; }
-.labels .tier { font: 600 10.5px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink); background: #fffdf8e6; border-left: 4px solid var(--c); padding: 3px 8px; border-radius: 3px; transform: none; }
 .cut { position: absolute; right: 18px; top: 64px; width: 132px; padding: 10px 10px 10px 12px; background: #fffdf8d9; border: 1px solid #0000000f; border-radius: 12px; backdrop-filter: blur(6px); box-shadow: 0 6px 24px #0001; user-select: none; z-index: 3; }
 .cut .ttl { font: 600 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 6px; }
 .cut .track { position: relative; padding-left: 18px; cursor: ns-resize; touch-action: none; }
@@ -146,6 +145,7 @@ footer { font: 11px var(--mono); color: var(--muted); margin-top: 30px; }
       <h1>Spatialized code</h1>
       <div class="controls">
         <span class="grp"><span class="lbl">Rooms</span><div class="tabs" id="group-tabs"><button data-g="room" aria-pressed="true" title="files that depend on each other and change together">By dependencies</button><button data-g="folder" title="the folders the code is filed in">By folders</button></div></span>
+        <span class="grp"><span class="lbl">Form</span><div class="tabs" id="form-tabs"><button data-f="pits" aria-pressed="true" title="rooms as pits below the platform">Pits</button><button data-f="buildings" title="rooms as buildings on the platform, every link a pipe">Buildings</button></div></span>
         <span class="grp"><span class="lbl">View</span><div class="tabs" id="view-tabs"><button data-v="top">Top</button><button data-v="axo" aria-pressed="true">Axonometric</button><button data-v="persp">Perspective</button><button data-v="front">Front</button></div></span>
         <span class="grp"><span class="lbl">Strata</span><div class="tabs" id="color-tabs"><button data-c="lang" aria-pressed="true">Language</button><button data-c="folder">Folder</button><button data-c="churn">Recent changes</button><button data-c="dup">Duplication</button><button data-c="cx">Complexity</button></div></span>
       </div>
@@ -154,10 +154,11 @@ footer { font: 11px var(--mono); color: var(--muted); margin-top: 30px; }
     <div class="cut" id="cut" role="slider" aria-label="Cross-section: the tier the cut is at" tabindex="0"><div class="ttl">Cross-section</div><div class="track" id="cut-track"></div><div class="note" id="cut-note"></div></div>
     <button class="help-btn" id="help-btn" aria-expanded="false" aria-controls="help" title="How to read the map">?</button>
     <div class="help" id="help" role="dialog" aria-label="How to read the map">
-      <p><b>Platforms</b> are the architecture's tiers, top to bottom: presentation, application, domain, data, integration. Each file is sorted into one by what its code uses (UI, HTTP or a command line, nothing but logic, storage, another program's API); where the code shows nothing, its path decides; <code>[tiers]</code> in the config overrides both.</p>
-      <p><b>Rooms</b> are openings in a platform. <b>By dependencies</b>: files of one tier that depend on each other and change together, whatever folder they are in. <b>By folders</b>: the folders the code is filed in, a big folder split into its sub-folders; a component's rooms stand in a tinted wing. A component sits at the same spot on every platform and in both views. Switch between them and watch the files move: a folder that is one thing moves as a block, a folder that is several things scatters.</p>
+      <p><b>Platforms</b> are the architecture's tiers, top to bottom: presentation, application, domain, data, integration. Each file is sorted into one by what its code uses (UI, HTTP or a command line, nothing but logic, storage, another program's API); where the code shows nothing, its path decides; <code>[tiers]</code> in the config overrides both. A platform's size comes in steps and grows with the files on it. Its rooms stand on the plots of a street grid, the same on every platform, near the rooms they work with.</p>
+      <p><b>Rooms</b> are openings in a platform. <b>By dependencies</b>: files of one tier that depend on each other and change together, whatever folder they are in. <b>By folders</b>: the folders the code is filed in, a big folder split into its sub-folders; the plots of a component's rooms are tinted. A component sits near the same spot on every platform and in both views. Switch between them and watch the files move: a folder that is one thing moves as a block, a folder that is several things scatters.</p>
       <p><b>Folders vs rooms</b> (the panel): how far the two agree, folders split across several rooms, rooms that gather several folders, and files whose dependencies live in another folder. Colour the strata by <b>Folder</b> to see it on the map: one colour per component, a shade per sub-folder.</p>
       <p><b>Strata</b>: below each opening hangs a pit, as deep as the room's code. Every band on the pit's walls is one file, as thick as its share of the room's lines, the biggest on top; it darkens with depth. Its colour is chosen above (language, recent changes, duplication, complexity).</p>
+      <p><b>Form</b>: as <b>buildings</b>, each room stands on its platform instead, as high as its pit would be deep; a floor is a file, the biggest at the bottom, and every dependency is a <b>pipe</b>, in the streets of a platform, each in its own lane, and down onto the roofs between platforms. The marks below are on the roofs.</p>
       <p><b>Corridors</b> on a platform, <b>tubes</b> between platforms carry the dependencies between rooms, wider for more; red where two rooms depend on each other, dashed lavender where they only change together.</p>
       <p>On a room's floor: <b>pins</b> are magic values, <b>hatching</b> duplicated code, <b>dark discs</b> swallowed errors, an <b>orange cone</b> a layer violation; a <b>dashed red rim</b> a dependency cycle; warm glass a hotspot. <b>Orange arcs</b> tie rooms that hold clones of each other.</p>
       <p><b>Cross-section</b> (right): cut the stack at a tier. The tiers above it are cut away, that tier is solid and labelled, the ones below are ghosted. Alt + scroll moves the cut.</p>
@@ -214,6 +215,8 @@ useView("room");
 const viewOf = (rid) => VIEWS.room.rooms[rid] ? "room" : VIEWS.folder.rooms[rid] ? "folder" : null;
 const anyRoom = (rid) => VIEWS.room.rooms[rid] || VIEWS.folder.rooms[rid];
 let colorBy = "lang", viewKind = "axo", selected = null, hovered = null, cut = -1, hidePits = false;
+// the rooms' form: pits hanging below the platforms, or buildings standing on them (then every link is a pipe)
+let form = new URLSearchParams(location.search).get("form") === "buildings" ? "buildings" : "pits";
 // the cross-section: -1 all tiers; k: the tiers above k cut away, k solid and labelled, the ones below ghosted
 const visOf = (tier) => cut < 0 ? "full" : TIER_IX[tier] < cut ? "hidden" : TIER_IX[tier] === cut ? "full" : "ghost";
 const labelled = (tier) => TIER_IX[tier] === Math.max(0, cut);
@@ -254,12 +257,12 @@ function stratumColor(f) {
 const col = (c) => new THREE.Color(c);
 
 // ------------------------------------------------------------------ geometry of the map
-// the platforms are sized over both views, so a component stands at the same spot in either
+// a platform per tier, sized (in steps) by what is on it, the same for both views, so a component stands near the
+// same spot in either
 const maxLoc = Math.max(...ALL_ROOMS.map((r) => r.loc));
 const depthOf = (loc) => 1.5 + 14 * Math.sqrt(loc / maxLoc);
-const SLAB = 0.6, MARGIN = 3;
-const X0 = Math.min(...ALL_ROOMS.map((r) => r.x)) - MARGIN, X1 = Math.max(...ALL_ROOMS.map((r) => r.x + r.w)) + MARGIN;
-const Y0 = Math.min(...ALL_ROOMS.map((r) => r.y)) - MARGIN, Y1 = Math.max(...ALL_ROOMS.map((r) => r.y + r.h)) + MARGIN;
+const SLAB = 0.6;
+const PLATFORM = Object.fromEntries(Object.entries(DATA.platforms).map(([t, p]) => [t, { X0: p.x, X1: p.x + p.side, Y0: p.y, Y1: p.y + p.side }]));
 const GAP = depthOf(maxLoc) + 9;
 function offset(tier) {
   return new THREE.Vector3(0, -TIER_IX[tier] * GAP, 0);
@@ -312,7 +315,7 @@ const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xfff6ee, 0x6a5f78, 0.95));
 const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(-40, 80, 30); scene.add(sun);
 let root = null, content = null, camera = null, controls = null;
-const pickables = [], labelEls = [], linkObjs = [];
+const pickables = [], labelEls = [], linkObjs = [], standing = [];
 
 function ribbon(path2d, tier, h, width, color, opacity, dashed) {
   const pts = path2d.map(([x, y]) => at(tier, x, y, h));
@@ -366,7 +369,7 @@ function fade(group, k) {
 function build() {
   if (root) { scene.remove(root); root.traverse((o) => { o.geometry && o.geometry.dispose(); }); }
   root = new THREE.Group(); scene.add(root);
-  pickables.length = 0; linkObjs.length = 0;
+  pickables.length = 0; linkObjs.length = 0; standing.length = 0;
   $("#labels").innerHTML = ""; labelEls.length = 0;
   for (const t of TIERS) {
     const v = visOf(t.id);
@@ -381,29 +384,56 @@ function build() {
   if (!hidePits) { links(); threads(); }
 }
 
-// by folders: a component's rooms stand in a wing of their own, tinted in the component's colour
+// by folders: the plots of a component's rooms, tinted in the component's colour
 function wings(t) {
-  const by = {};
+  const G = DATA.streets[grouping], by = {};
   for (const rid of IDS.filter((r) => ROOMS[r].tier === t.id)) (by[ROOMS[rid].comp] ||= []).push(ROOMS[rid]);
   for (const [c, rs] of Object.entries(by)) {
     if (rs.length < 2) continue;
-    const m = 1.3, x0 = Math.min(...rs.map((r) => r.x)) - m, x1 = Math.max(...rs.map((r) => r.x + r.w)) + m;
-    const y0 = Math.min(...rs.map((r) => r.y)) - m, y1 = Math.max(...rs.map((r) => r.y + r.h)) + m;
-    const rr = 1.2, s = new THREE.Shape();
-    s.moveTo(x0 + rr, -y0); s.lineTo(x1 - rr, -y0); s.quadraticCurveTo(x1, -y0, x1, -y0 - rr); s.lineTo(x1, -y1 + rr); s.quadraticCurveTo(x1, -y1, x1 - rr, -y1);
-    s.lineTo(x0 + rr, -y1); s.quadraticCurveTo(x0, -y1, x0, -y1 + rr); s.lineTo(x0, -y0 - rr); s.quadraticCurveTo(x0, -y0, x0 + rr, -y0);
-    const floor = new THREE.Mesh(new THREE.ShapeGeometry(s), new THREE.MeshBasicMaterial({ color: compColor(c, 0.75, 45), transparent: true, opacity: 0.32, depthWrite: false }));
-    floor.rotation.x = -Math.PI / 2; floor.position.copy(offset(t.id)).add(new THREE.Vector3(0, 0.015, 0)); content.add(floor);
-    const edge = new THREE.Line(new THREE.BufferGeometry().setFromPoints(s.getPoints(8).map((p) => at(t.id, p.x, -p.y, 0.025))), new THREE.LineBasicMaterial({ color: compColor(c, 0.1, 35) }));
-    content.add(edge);
+    const mine = new Set(rs.flatMap((r) => { const [i, j, kx, ky] = r.plot, out = []; for (let a = 0; a < kx; a++) for (let b = 0; b < ky; b++) out.push((i + a) + "," + (j + b)); return out; }));
+    const { X0, X1, Y0, Y1 } = PLATFORM[t.id], cell = (i, j) => [Math.max(X0 + 0.7, G.x + i * G.px), Math.max(Y0 + 0.7, G.y + j * G.py), Math.min(X1 - 0.7, G.x + (i + 1) * G.px), Math.min(Y1 - 0.7, G.y + (j + 1) * G.py)];
+    const pos = [], edge = [];
+    for (const k of mine) {
+      const [i, j] = k.split(",").map(Number), [x0, y0, x1, y1] = cell(i, j), v = (x, y, h) => { const q = at(t.id, x, y, h); return [q.x, q.y, q.z]; };
+      pos.push(...v(x0, y0, 0.015), ...v(x0, y1, 0.015), ...v(x1, y1, 0.015), ...v(x0, y0, 0.015), ...v(x1, y1, 0.015), ...v(x1, y0, 0.015));
+      for (const [di, dj, a, b] of [[-1, 0, [x0, y0], [x0, y1]], [1, 0, [x1, y0], [x1, y1]], [0, -1, [x0, y0], [x1, y0]], [0, 1, [x0, y1], [x1, y1]]]) if (!mine.has((i + di) + "," + (j + dj))) edge.push(...v(...a, 0.025), ...v(...b, 0.025));
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    content.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: compColor(c, 0.75, 45), transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide })));
+    const e = new THREE.BufferGeometry(); e.setAttribute("position", new THREE.Float32BufferAttribute(edge, 3));
+    content.add(new THREE.LineSegments(e, new THREE.LineBasicMaterial({ color: compColor(c, 0.1, 35) })));
+    const [i, j] = [...mine].map((k) => k.split(",").map(Number)).sort((p, q) => p[1] - q[1] || p[0] - q[0])[0], [x0, y0] = cell(i, j);
     const lab = document.createElement("div"); lab.className = "wing"; lab.textContent = compName(c); lab.style.setProperty("--c", compColor(c, 0.2, 40));
     $("#labels").appendChild(lab); labelEls.push({ el: lab, p: at(t.id, x0 + 0.4, y0 + 0.4, 0.2), rank: 0, quiet: !labelled(t.id), wing: true });
   }
 }
 
+// a tier's name as a texture, its capitals as high as the texture; ratio: its width over that height
+const LETTERS = {};
+function letters(t) {
+  if (LETTERS[t.id]) return LETTERS[t.id];
+  const c = document.createElement("canvas"), x = c.getContext("2d"), px = 200, cap = Math.round(px * 0.73), pad = 8;
+  const font = () => { x.font = `600 ${px}px Inter, system-ui, "Segoe UI", Arial, sans-serif`; x.letterSpacing = "10px"; x.fillStyle = "#" + col(TIER_COLOR[t.id]).lerp(col("#303038"), 0.4).getHexString(); };
+  font(); c.width = Math.ceil(x.measureText(t.label.toUpperCase()).width) + 2 * pad; c.height = cap + 2 * pad;
+  font(); x.fillText(t.label.toUpperCase(), pad, cap + pad);
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return (LETTERS[t.id] = { tex, ratio: c.width / c.height });
+}
+// one size of lettering on every platform: the one at which "Application" fits the smallest (SMALLEST and TITLE in
+// codemap.py), in the strip kept free between the rim and the wings
+const SMALLEST = 16, TITLE = 4, RIM = 0.45, STRIP = TITLE - RIM - 1.3;
+const letterHeight = () => Math.min(0.8 * STRIP, (SMALLEST - 3) / letters({ id: "application", label: "Application" }).ratio);
+function lettering(t) { // drawn after the slabs, which hide it where they stand before it
+  const { tex, ratio } = letters(t), h = letterHeight();
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(h * ratio, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  m.renderOrder = 1; m.userData.w = h * ratio;
+  return m;
+}
+
 function platform(t) {
+  const { X0, X1, Y0, Y1 } = PLATFORM[t.id];
   const shape = new THREE.Shape([new THREE.Vector2(X0, -Y0), new THREE.Vector2(X1, -Y0), new THREE.Vector2(X1, -Y1), new THREE.Vector2(X0, -Y1)]);
-  for (const rid of IDS.filter((r) => ROOMS[r].tier === t.id)) {
+  if (form === "pits") for (const rid of IDS.filter((r) => ROOMS[r].tier === t.id)) {
     const r = ROOMS[rid];
     shape.holes.push(new THREE.Path([new THREE.Vector2(r.x, -r.y), new THREE.Vector2(r.x, -r.y - r.h), new THREE.Vector2(r.x + r.w, -r.y - r.h), new THREE.Vector2(r.x + r.w, -r.y)]));
   }
@@ -415,16 +445,18 @@ function platform(t) {
   // the tier shows as a band along the slab's edge, standing proud of the slab on every side (no face shared
   // with it, so nothing flickers)
   const edge = new THREE.MeshLambertMaterial({ color: TIER_COLOR[t.id] });
-  const bw = 0.45, e = 0.04, cx = (X0 + X1) / 2, cz = (Y0 + Y1) / 2, L = X1 - X0 + 2 * e, D = Y1 - Y0 + 2 * e;
+  const bw = RIM, e = 0.04, cx = (X0 + X1) / 2, cz = (Y0 + Y1) / 2, L = X1 - X0 + 2 * e, D = Y1 - Y0 + 2 * e;
   const ins = (lo, sign) => lo - sign * e + sign * bw / 2;
   for (const [w, d, x, z] of [[L, bw, cx, ins(Y0, 1)], [L, bw, cx, ins(Y1, -1)], [bw, D, ins(X0, 1), cz], [bw, D, ins(X1, -1), cz]]) {
     const b = new THREE.Mesh(new THREE.BoxGeometry(w, SLAB + 2 * e + 0.03, d), edge);
     b.position.copy(o).add(new THREE.Vector3(x, -SLAB / 2 + 0.015, z)); content.add(b);
   }
-  if (visOf(t.id) === "full") {
-    const lab = document.createElement("div"); lab.className = "tier"; lab.textContent = t.label; lab.style.setProperty("--c", TIER_COLOR[t.id]);
-    $("#labels").appendChild(lab); labelEls.push({ el: lab, p: at(t.id, X0 + 0.5, Y1 - 0.5, 0.2), tier: true });
-  }
+  // the tier's name, written on the slab along its front edge; in the front view, where the slab is seen edge-on, it
+  // stands beside the slab instead
+  const name = lettering(t);
+  name.rotation.x = -Math.PI / 2; name.position.copy(at(t.id, X0 + bw + 0.8 + name.userData.w / 2, Y1 - bw - STRIP / 2, 0.05)); content.add(name);
+  const beside = lettering(t);
+  beside.position.copy(at(t.id, X0 - 1.2 - beside.userData.w / 2, Y1, -SLAB / 2)); beside.visible = viewKind === "front"; content.add(beside); standing.push(beside);
 }
 
 function room(rid) {
@@ -435,6 +467,7 @@ function room(rid) {
     content.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => at(t, x, y, 0.05))), new THREE.LineBasicMaterial({ color: "#8d857f" })));
     return;
   }
+  if (form === "buildings") return building(rid, files, total);
   const shown = files.slice(0, 24), rest = files.slice(24);
   const bands = shown.map((f) => ({ f, h: (d - SLAB) * f.loc / total }));
   if (rest.length) bands.push({ f: { rest: true, path: `${rest.length} smaller files`, loc: rest.reduce((s, f) => s + f.loc, 0) }, h: (d - SLAB) * rest.reduce((s, f) => s + f.loc, 0) / total });
@@ -457,17 +490,53 @@ function room(rid) {
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(colr, 3));
   const pit = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
   pit.position.copy(offset(t)); pit.userData.rid = rid; content.add(pit); pickables.push(pit);
-  // the floor: glass over the opening, warm when the room is a hotspot; hatching for duplication
-  const maxHot = Math.max(...IDS.map((i) => ROOMS[i].hotspot || 0.01));
-  const glass = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.h), new THREE.MeshBasicMaterial({ color: col("#fbf8f3").lerp(col("#ee7138"), Math.min(0.6, r.hotspot / maxHot)), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
+  // the floor: glass over the opening, warm when the room is a hotspot
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.h), new THREE.MeshBasicMaterial({ color: col("#fbf8f3").lerp(col("#ee7138"), heat(r)), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
   glass.rotation.x = -Math.PI / 2; glass.position.copy(at(t, r.x + r.w / 2, r.y + r.h / 2, 0.02)); glass.userData.rid = rid; content.add(glass); pickables.push(glass);
+  marks(rid, 0);
+}
+
+// a building: a floor per file, as high as its share of the room's lines, the biggest at the bottom
+function building(rid, files, total) {
+  const r = ROOMS[rid], H = depthOf(r.loc), o = offset(r.tier), x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
+  const shown = files.slice(0, 24), rest = files.slice(24), restLoc = rest.reduce((s, f) => s + f.loc, 0);
+  const floors = shown.map((f) => ({ f, h: H * f.loc / total }));
+  if (rest.length) floors.push({ f: { rest: true }, h: H * restLoc / total });
+  const pos = [], colr = [], seams = [], plan = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
+  const quad = (a, b, c, e, color) => { for (const p of [a, b, c, a, c, e]) { pos.push(...p); colr.push(color.r, color.g, color.b); } };
+  let z = 0;
+  floors.forEach(({ f, h }, i) => {
+    const za = z, zb = z + h, c = col(stratumColor(f));
+    quad([x0, za, y1], [x1, za, y1], [x1, zb, y1], [x0, zb, y1], c);
+    quad([x1, za, y1], [x1, za, y0], [x1, zb, y0], [x1, zb, y1], c.clone().multiplyScalar(0.84));
+    quad([x1, za, y0], [x0, za, y0], [x0, zb, y0], [x1, zb, y0], c.clone().multiplyScalar(0.72));
+    quad([x0, za, y0], [x0, za, y1], [x0, zb, y1], [x0, zb, y0], c.clone().multiplyScalar(0.8));
+    if (i) for (let j = 0; j < 4; j++) seams.push(...plan.slice(j, j + 2).map(([x, y]) => new THREE.Vector3(x, za, y)));
+    z = zb;
+  });
+  for (let j = 0; j < 4; j++) seams.push(new THREE.Vector3(plan[j][0], 0, plan[j][1]), new THREE.Vector3(plan[j][0], H, plan[j][1]));
+  quad([x0, H, y1], [x1, H, y1], [x1, H, y0], [x0, H, y0], col("#f3eee6").lerp(col("#ee7138"), heat(r)));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(colr, 3));
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+  m.position.copy(o); m.userData.rid = rid; content.add(m); pickables.push(m);
+  const lines = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(seams), new THREE.LineBasicMaterial({ color: "#3b3644", transparent: true, opacity: 0.4 }));
+  lines.position.copy(o); content.add(lines);
+  marks(rid, H);
+}
+const heat = (r) => Math.min(0.6, r.hotspot / Math.max(...IDS.map((i) => ROOMS[i].hotspot || 0.01)));
+
+// what a room's floor (or a building's roof, at height H) says about it: hatching for duplication, the rim, pins,
+// discs, the cone, its name
+function marks(rid, H) {
+  const r = ROOMS[rid], t = r.tier, x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
   if (r.dup > 0.01) {
     const tex = hatchTex.clone(); tex.needsUpdate = true; tex.repeat.set(r.w / 2, r.h / 2);
-    const hm = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: Math.min(0.9, r.dup / 0.08), depthWrite: false }));
-    hm.rotation.x = -Math.PI / 2; hm.position.copy(at(t, r.x + r.w / 2, r.y + r.h / 2, 0.04)); content.add(hm);
+    const hm = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: Math.min(H ? 0.5 : 0.9, r.dup / 0.08), depthWrite: false }));
+    hm.rotation.x = -Math.PI / 2; hm.position.copy(at(t, r.x + r.w / 2, r.y + r.h / 2, H + 0.04)); content.add(hm);
   }
   // the rim: dashed red when the room is in a dependency cycle
-  const rim = new THREE.Line(new THREE.BufferGeometry().setFromPoints([[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => at(t, x, y, 0.05))),
+  const rim = new THREE.Line(new THREE.BufferGeometry().setFromPoints([[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => at(t, x, y, H + 0.05))),
     r.cycle != null ? new THREE.LineDashedMaterial({ color: "#c2432b", dashSize: 0.6, gapSize: 0.35 }) : new THREE.LineBasicMaterial({ color: "#8d857f" }));
   rim.computeLineDistances(); content.add(rim);
   // magic values: pins; swallowed errors: dark discs; a layer violation: an orange cone
@@ -475,20 +544,20 @@ function room(rid) {
   const pinMat = new THREE.MeshLambertMaterial({ color: "#c2432b" }), stemMat = new THREE.LineBasicMaterial({ color: "#5d5660" });
   for (let i = 0; i < Math.min(14, Math.round(r.magic_kloc / 10)); i++) {
     const px = x0 + 0.5 + rand() * (r.w - 1), py = y0 + 0.5 + rand() * (r.h - 1);
-    content.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([at(t, px, py, 0.05), at(t, px, py, 1.0)]), stemMat));
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), pinMat); s.position.copy(at(t, px, py, 1.0)); content.add(s);
+    content.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([at(t, px, py, H + 0.05), at(t, px, py, H + 1.0)]), stemMat));
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), pinMat); s.position.copy(at(t, px, py, H + 1.0)); content.add(s);
   }
   for (let i = 0; i < Math.min(10, r.swallowed_n); i++) {
     const disc = new THREE.Mesh(new THREE.CircleGeometry(0.3, 16), new THREE.MeshBasicMaterial({ color: "#37353d", transparent: true, opacity: 0.75, depthWrite: false }));
-    disc.rotation.x = -Math.PI / 2; disc.position.copy(at(t, x0 + 0.5 + rand() * (r.w - 1), y0 + 0.5 + rand() * (r.h - 1), 0.06)); content.add(disc);
+    disc.rotation.x = -Math.PI / 2; disc.position.copy(at(t, x0 + 0.5 + rand() * (r.w - 1), y0 + 0.5 + rand() * (r.h - 1), H + 0.06)); content.add(disc);
   }
   if (r.violations_n) {
     const cone = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 12), new THREE.MeshLambertMaterial({ color: "#ee7138" }));
-    cone.position.copy(at(t, x1 - 0.6, y0 + 0.6, 0.5)); content.add(cone);
+    cone.position.copy(at(t, x1 - 0.6, y0 + 0.6, H + 0.5)); content.add(cone);
   }
   const lab = document.createElement("div"); lab.className = "room";
   lab.innerHTML = `${esc(r.name)}<small>${r.files.length} files · ${fmt(r.loc)} loc</small>`;
-  $("#labels").appendChild(lab); labelEls.push({ el: lab, p: at(t, r.x + r.w / 2, r.y + r.h / 2, 0.3), rid, rank: r.loc, quiet: !labelled(t) });
+  $("#labels").appendChild(lab); labelEls.push({ el: lab, p: at(t, r.x + r.w / 2, r.y + r.h / 2, H + 0.3), rid, rank: r.loc, quiet: !labelled(t) });
 }
 
 function pairsOf() {
@@ -506,7 +575,234 @@ function pairsOf() {
 }
 const linkColor = (p) => p.mutual ? "#c2432b" : p.refs > 0 ? "#7d7279" : "#8f8bb3";
 
+// ------------------------------------------------------------------ pipes between buildings
+// On a platform a pipe runs in the streets: out of a wall into the street, along the shortest way on the street grid (a
+// price on bends, a small one on busy streets), in by a wall. In a street every pipe has a lane of its own, the lanes
+// side by side in its middle; pipes running east-west lie above those running north-south, so none cut each other.
+const ROUTES = {}, LANE = 0.9, NARROW = 0.5;
+const LEVEL = [0.45, 1.0], RACK = 1.15; // the height of the pipes along the streets running north-south, east-west; of a second rack, in a street too narrow for one
+function pipeRoutes(tier, pairs) {
+  const key = grouping + "|" + tier;
+  if (ROUTES[key]) return ROUTES[key];
+  const G = DATA.streets[grouping], P = PLATFORM[tier], ids = IDS.filter((r) => ROOMS[r].tier === tier);
+  const n = [G.nx, G.ny], pitch = [G.px, G.py], org = [G.x, G.y], LO = [P.X0 + 1.5, P.Y0 + 1.5], HI = [P.X1 - 1.5, P.Y1 - TITLE + 0.5];
+  const line = (ax, i) => org[ax] + i * pitch[ax]; // ax 0: the streets x = const (running north-south), 1: y = const
+  const open = (ax, i) => i >= 0 && i <= n[ax] && line(ax, i) >= LO[ax] && line(ax, i) <= HI[ax];
+  const lot = {};
+  for (const id of ids) { const [i, j, kx, ky] = ROOMS[id].plot; for (let a = 0; a < kx; a++) for (let b = 0; b < ky; b++) lot[(i + a) + "," + (j + b)] = id; }
+  // a stretch of street, from crossing k to k + 1 of line i: closed where one building stands on both sides of it
+  const stretch = (ax, i, k) => {
+    if (!open(ax, i) || !open(1 - ax, k) || !open(1 - ax, k + 1)) return false;
+    const a = ax ? lot[k + "," + (i - 1)] : lot[(i - 1) + "," + k], b = ax ? lot[k + "," + i] : lot[i + "," + k];
+    return !a || a !== b;
+  };
+  const used = {}, busy = (ax, i, k) => used[ax + ":" + i + ":" + k] || 0;
+  const box = (id) => { const r = ROOMS[id]; return [[r.x, r.x + r.w], [r.y, r.y + r.h]]; };
+  const sides = (id) => { // its walls: the street each faces, and where its middle is along it
+    const b = box(id), [i, j, kx, ky] = ROOMS[id].plot, mid = [(b[0][0] + b[0][1]) / 2, (b[1][0] + b[1][1]) / 2];
+    return [{ ax: 0, i: i + kx, wall: b[0][1], at: mid[1] }, { ax: 0, i, wall: b[0][0], at: mid[1] }, { ax: 1, i: j + ky, wall: b[1][1], at: mid[0] }, { ax: 1, i: j, wall: b[1][0], at: mid[0] }].filter((s) => open(s.ax, s.i));
+  };
+  const reach = (s) => { // the crossings on either side of a wall's middle, along the street it faces
+    const t = (s.at - org[1 - s.ax]) / pitch[1 - s.ax], out = [], lo = Math.ceil(t - 1e-6) - 1, hi = Math.floor(t + 1e-6) + 1;
+    const onto = Math.abs(t - Math.round(t)) < 1e-6; // the middle of a building two plots wide faces a crossing
+    if (stretch(s.ax, s.i, onto ? lo : Math.floor(t))) out.push(lo);
+    if (stretch(s.ax, s.i, onto ? Math.round(t) : Math.floor(t))) out.push(hi);
+    return out.map((k) => ({ k, d: Math.abs(s.at - line(1 - s.ax, k)) }));
+  };
+  const clear = (ax, i, a, b) => { // the street is open all along from a to b
+    const o = org[1 - ax], p = pitch[1 - ax];
+    for (let k = Math.floor((Math.min(a, b) - o) / p + 1e-6); k < (Math.max(a, b) - o) / p - 1e-6; k++) if (!stretch(ax, i, k)) return false;
+    return true;
+  };
+  const order = [...pairs].sort((p, q) => q.strength - p.strength || (p.a + p.b < q.a + q.b ? -1 : 1));
+  const BEND = 4, ways = [];
+  for (const p of order) {
+    const SA = sides(p.a), SB = sides(p.b);
+    let best = { cost: Infinity };
+    for (const a of SA) for (const b of SB) { // along one street only, or straight across it
+      if (a.ax !== b.ax || a.i !== b.i) continue;
+      const u = box(p.a)[1 - a.ax], v = box(p.b)[1 - a.ax], lo = Math.max(u[0], v[0]), hi = Math.min(u[1], v[1]);
+      const across = hi - lo >= 1 && (a.wall < line(a.ax, a.i)) !== (b.wall < line(b.ax, b.i));
+      const cost = Math.abs(a.wall - b.wall) * (across ? 1 : 0.5) + (across ? 0 : Math.abs(a.at - b.at) + 2 * BEND);
+      if (cost < best.cost && (across || clear(a.ax, a.i, a.at, b.at))) best = { cost, a, b, across: across ? (lo + hi) / 2 : null, turns: [] };
+    }
+    const dist = new Map(), from = new Map(), queue = [];
+    const put = (st, d, f) => { if (d < (dist.get(st) ?? Infinity) - 1e-9) { dist.set(st, d); from.set(st, f); queue.push([d, st]); } };
+    const id = (c, ax) => (c[1] * (n[0] + 1) + c[0]) * 2 + ax;
+    SA.forEach((s, w) => { for (const { k, d } of reach(s)) { const c = s.ax ? [k, s.i] : [s.i, k]; put(id(c, s.ax), d + Math.abs(s.wall - line(s.ax, s.i)) + BEND, -1 - w); } });
+    const ends = new Map();
+    SB.forEach((s) => { for (const { k, d } of reach(s)) { const c = s.ax ? [k, s.i] : [s.i, k], e = id(c, 0) >> 1; if (!ends.has(e)) ends.set(e, []); ends.get(e).push({ s, d: d + Math.abs(s.wall - line(s.ax, s.i)) + BEND }); } });
+    while (queue.length) {
+      let m = 0;
+      for (let q = 1; q < queue.length; q++) if (queue[q][0] < queue[m][0]) m = q;
+      const [d, st] = queue.splice(m, 1)[0];
+      if (d > dist.get(st) + 1e-9 || d >= best.cost) continue;
+      const node = st >> 1, ax = st & 1, c = [node % (n[0] + 1), Math.floor(node / (n[0] + 1))];
+      for (const e of ends.get(node) || []) { const cost = d + e.d + (e.s.ax === ax ? 0 : BEND); if (cost < best.cost) best = { cost, b: e.s, last: st, across: null }; }
+      for (const nax of [0, 1]) for (const dir of [-1, 1]) { // on along the street, or round the corner
+        const i = c[nax], k = c[1 - nax], seg = dir > 0 ? k : k - 1;
+        if (!stretch(nax, i, seg)) continue;
+        const to = nax ? [k + dir, i] : [i, k + dir];
+        put(id(to, nax), d + pitch[1 - nax] * (1 + 0.06 * busy(nax, i, seg)) + (nax === ax ? 0 : BEND), st);
+      }
+    }
+    if (best.cost === Infinity) continue;
+    const runs = []; // the streets it runs along, one after the other: { ax, i }
+    if (best.last !== undefined) {
+      const sts = [];
+      let st = best.last;
+      while (st >= 0) { sts.unshift(st); st = from.get(st); }
+      best.a = SA[-1 - st];
+      const crossing = (x) => { const v = x >> 1; return [v % (n[0] + 1), Math.floor(v / (n[0] + 1))]; };
+      let cur = { ax: best.a.ax, i: best.a.i }; runs.push(cur);
+      sts.forEach((x, q) => { if (!q) return; const ax = x & 1, c = crossing(x), b = crossing(sts[q - 1]); if (ax !== cur.ax) runs.push(cur = { ax, i: c[ax] }); used[ax + ":" + c[ax] + ":" + Math.min(c[1 - ax], b[1 - ax])] = busy(ax, c[ax], Math.min(c[1 - ax], b[1 - ax])) + 1; });
+      if (best.b.ax !== cur.ax) runs.push({ ax: best.b.ax, i: best.b.i });
+    } else if (best.across === null) runs.push({ ax: best.a.ax, i: best.a.i });
+    ways.push({ p, a: { ...best.a }, b: { ...best.b }, across: best.across, runs });
+  }
+  // doors: a wall's pipes side by side along it, in the order of where they go
+  const walls = {};
+  for (const w of ways) for (const [end, room, other] of [["a", w.p.a, w.p.b], ["b", w.p.b, w.p.a]]) {
+    const s = w[end], k = room + ":" + s.ax + ":" + s.i, run = end === "a" ? w.runs[0] : w.runs[w.runs.length - 1], next = end === "a" ? w.runs[1] : w.runs[w.runs.length - 2];
+    const o = box(other)[1 - s.ax], toward = w.across !== null ? w.across : next ? line(next.ax, next.i) : (o[0] + o[1]) / 2;
+    (walls[k] ||= { span: box(room)[1 - s.ax], list: [] }).list.push({ s, toward, w, run });
+  }
+  for (const { span, list } of Object.values(walls)) {
+    list.sort((u, v) => u.toward - v.toward || (u.w.p.a + u.w.p.b < v.w.p.a + v.w.p.b ? -1 : 1));
+    list.forEach((u, q) => { u.s.at = span[0] + (span[1] - span[0]) * (q + 1) / (list.length + 1); });
+  }
+  for (const w of ways) if (w.across !== null) { // straight across: one door opposite the other, where both walls can
+    const u = box(w.p.a)[1 - w.a.ax], v = box(w.p.b)[1 - w.a.ax], lo = Math.max(u[0], v[0]) + 0.4, hi = Math.min(u[1], v[1]) - 0.4;
+    w.a.at = w.b.at = Math.max(lo, Math.min(hi, (w.a.at + w.b.at) / 2));
+  }
+  // lanes: the runs along a street that meet get one each, those coming from and going to one side on that side
+  const streets = {}, swaps = [];
+  for (const w of ways) w.runs.forEach((r, q) => {
+    const before = q ? line(w.runs[q - 1].ax, w.runs[q - 1].i) : w.a.at, after = q < w.runs.length - 1 ? line(w.runs[q + 1].ax, w.runs[q + 1].i) : w.b.at;
+    const here = line(r.ax, r.i), mid = (id) => (box(id)[r.ax][0] + box(id)[r.ax][1]) / 2;
+    const prev = q > 1 ? line(w.runs[q - 2].ax, w.runs[q - 2].i) : q ? w.a.at : w.a.wall, then = q < w.runs.length - 2 ? line(w.runs[q + 2].ax, w.runs[q + 2].i) : q < w.runs.length - 1 ? w.b.at : w.b.wall;
+    Object.assign(r, { lo: Math.min(before, after), hi: Math.max(before, after), turn: Math.sign(prev - here) + Math.sign(then - here), tie: mid(w.p.a) + mid(w.p.b), w });
+    (streets[r.ax + ":" + r.i] ||= []).push(r);
+  });
+  for (const list of Object.values(streets)) {
+    list.sort((u, v) => u.turn - v.turn || u.tie - v.tie || u.lo - v.lo || (u.w.p.a + u.w.p.b < v.w.p.a + v.w.p.b ? -1 : 1));
+    const meet = (u, v) => u.lo < v.hi + 1.2 && v.lo < u.hi + 1.2, group = list.map((_, q) => q), find = (q) => group[q] === q ? q : (group[q] = find(group[q]));
+    for (let q = 0; q < list.length; q++) for (let t = q + 1; t < list.length; t++) if (meet(list[q], list[t])) group[find(t)] = find(q);
+    const parts = {};
+    list.forEach((r, q) => (parts[find(q)] ||= []).push(r));
+    for (const part of Object.values(parts)) {
+      part.forEach((r, q) => { const t = new Set(part.slice(0, q).filter((o) => meet(o, r)).map((o) => o.lane)); r.lane = 0; while (t.has(r.lane)) r.lane++; });
+      const count = 1 + Math.max(...part.map((r) => r.lane)), { ax, i } = part[0], here = line(ax, i);
+      const lo = Math.min(...part.map((r) => r.lo)), hi = Math.max(...part.map((r) => r.hi));
+      let left = here - LO[ax] + 0.5, right = HI[ax] - here + 0.5; // the free width of the street there
+      for (const id of ids) { const b = box(id); if (b[1 - ax][0] < hi + 0.5 && b[1 - ax][1] > lo - 0.5) { if (b[ax][1] <= here + 1e-6) left = Math.min(left, here - b[ax][1]); else if (b[ax][0] >= here - 1e-6) right = Math.min(right, b[ax][0] - here); } }
+      left = Math.min(left, 4); right = Math.min(right, 4);
+      let racks = 1, across = count;
+      while ((left + right - 0.8) / Math.max(1, across - 1) < NARROW && racks < 3) across = Math.ceil(count / ++racks);
+      const gap = Math.min(LANE, (left + right - 0.8) / Math.max(1, across - 1)), mid = here + (right - left) / 2;
+      part.forEach((u, q) => part.slice(q + 1).forEach((v) => swaps.push([u, v, () => {
+        if (u.lane === v.lane || part.some((o) => o !== u && o !== v && ((o.lane === v.lane && meet(o, u)) || (o.lane === u.lane && meet(o, v))))) return false;
+        for (const k of ["lane", "rack", "c"]) [u[k], v[k]] = [v[k], u[k]];
+        return true;
+      }])));
+      for (const r of part) { r.rack = r.lane % racks; r.c = mid + (Math.floor(r.lane / racks) - (across - 1) / 2) * gap; r.gap = gap; }
+    }
+  }
+  // lanes and doors change places while that makes fewer pipes cross
+  const stubOf = (s, c) => [1 - s.ax, s.at, Math.min(s.wall, c), Math.max(s.wall, c)]; // [the axis it has constant, where, from, to]
+  const flat = (w) => {
+    if (!w.runs.length) return [stubOf(w.a, w.b.wall)];
+    const last = w.runs.length - 1, segs = [stubOf(w.a, w.runs[0].c), stubOf(w.b, w.runs[last].c)];
+    w.runs.forEach((r, q) => { const t = q ? w.runs[q - 1].c : w.a.at, u = q < last ? w.runs[q + 1].c : w.b.at; segs.push([r.ax, r.c, Math.min(t, u), Math.max(t, u)]); });
+    return segs;
+  };
+  const shape = new Map(ways.map((w) => [w, flat(w)]));
+  const tangle = (two) => {
+    let n = 0;
+    for (const w of two) for (const o of ways) {
+      if (o === w || (o === two[0] && w === two[1])) continue;
+      for (const a of shape.get(w)) for (const b of shape.get(o)) {
+        if (a[0] !== b[0]) { if (b[1] > a[2] && b[1] < a[3] && a[1] > b[2] && a[1] < b[3]) n++; }
+        else if (Math.abs(a[1] - b[1]) < 0.28 && Math.min(a[3], b[3]) - Math.max(a[2], b[2]) > 0.3) n += 2;
+      }
+    }
+    return n;
+  };
+  for (const { list } of Object.values(walls)) list.forEach((u, q) => list.slice(q + 1).forEach((v) => {
+    if (u.w.across === null && v.w.across === null) swaps.push([u, v, () => { [u.s.at, v.s.at] = [v.s.at, u.s.at]; return true; }]);
+  }));
+  for (let round = 0, better = true; better && round < 6; round++) {
+    better = false;
+    for (const [u, v, swap] of swaps) {
+      if (u.w === v.w) continue;
+      const two = [u.w, v.w], before = tangle(two);
+      if (!before || !swap()) continue;
+      for (const w of two) shape.set(w, flat(w));
+      if (tangle(two) < before) { better = true; continue; }
+      swap();
+      for (const w of two) shape.set(w, flat(w));
+    }
+  }
+  const doors = ways.flatMap((w) => w.runs.length ? [[w, w.a, w.runs[0], "a"], [w, w.b, w.runs[w.runs.length - 1], "b"]] : []); // doors facing each other: a little apart
+  for (const [w, d, r, end] of doors) {
+    const span = box(end === "a" ? w.p.a : w.p.b)[1 - d.ax], home = d.at;
+    const hit = () => { const a = stubOf(d, r.c); return ways.some((o) => o !== w && shape.get(o).some((b) => a[0] === b[0] && Math.abs(a[1] - b[1]) < 0.28 && Math.min(a[3], b[3]) - Math.max(a[2], b[2]) > 0.3)); };
+    for (const by of [0, 0.3, -0.3, 0.5, -0.5, 0.8, -0.8]) { d.at = Math.max(span[0] + 0.3, Math.min(span[1] - 0.3, home + by)); if (!hit()) break; d.at = home; }
+    shape.set(w, flat(w));
+  }
+  const out = new Map();
+  for (const w of ways) {
+    const pt = (ax, c, t, h) => ax ? [t, c, h] : [c, t, h], into = (s) => s.wall + (s.wall < line(s.ax, s.i) ? -0.2 : 0.2); // c: the place across a street running along ax, t: along it
+    const stub = (s) => LEVEL[1 - s.ax], pts = [pt(w.a.ax, into(w.a), w.a.at, stub(w.a))];
+    w.runs.forEach((r, q) => {
+      const h = LEVEL[r.ax] + RACK * r.rack, prev = w.runs[q - 1], next = w.runs[q + 1];
+      const t0 = prev ? prev.c : w.a.at, t1 = next ? next.c : w.b.at;
+      if (!q) pts.push(pt(r.ax, r.c, t0, stub(w.a)));
+      pts.push(pt(r.ax, r.c, t0, h), pt(r.ax, r.c, t1, h));
+      if (!next) pts.push(pt(r.ax, r.c, t1, stub(w.b)));
+    });
+    pts.push(pt(w.b.ax, into(w.b), w.b.at, stub(w.b)));
+    const gap = Math.min(LANE, ...w.runs.map((r) => r.gap));
+    out.set(w.p.a + "|" + w.p.b, { path: pts, thick: 0.42 * gap });
+  }
+  return (ROUTES[key] = out);
+}
+function pipe(points, p, thick = 0.38) {
+  const pts = points.filter((q, i) => !i || q.distanceTo(points[i - 1]) > 1e-3);
+  const c = curve3(pts, 0.5), n = Math.min(600, Math.max(8, Math.ceil(c.getLength() * 2.5))), radial = 8, dashed = p.refs === 0;
+  const g = new THREE.TubeGeometry(c, n, Math.min(thick, 0.07 + 0.3 * Math.sqrt(p.strength)), radial, false);
+  if (dashed) g.setIndex([...g.index.array].filter((_, i) => Math.floor(i / (radial * 6)) % 4 < 2));
+  return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: linkColor(p), transparent: true, opacity: dashed ? 0.75 : 0.95, side: dashed ? THREE.DoubleSide : THREE.FrontSide }));
+}
+function pipes() {
+  const pairs = pairsOf(), shown = pairs.filter((p) => visOf(ROOMS[p.a].tier) !== "hidden" && visOf(ROOMS[p.b].tier) !== "hidden");
+  const cross = pairs.filter((p) => ROOMS[p.a].tier !== ROOMS[p.b].tier), ports = {};
+  for (const p of cross) for (const id of [p.a, p.b]) (ports[id] ||= []).push(p);
+  const port = (id, p) => { // where a pipe between tiers meets a building, spread over its plan
+    const r = ROOMS[id], n = ports[id].length, k = ports[id].indexOf(p), cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols);
+    return [r.x + r.w * (k % cols + 1) / (cols + 1), r.y + r.h * (Math.floor(k / cols) + 1) / (rows + 1)];
+  };
+  for (const p of shown) {
+    const A = ROOMS[p.a], B = ROOMS[p.b], objs = [];
+    if (A.tier === B.tier) {
+      const way = pipeRoutes(A.tier, pairs.filter((q) => ROOMS[q.a].tier === A.tier && ROOMS[q.b].tier === A.tier)).get(p.a + "|" + p.b);
+      if (!way) continue;
+      objs.push(pipe(way.path.map(([x, y, h]) => at(A.tier, x, y, h)), p, way.thick));
+    } else { // out under the upper building, across below its platform, down onto the lower building's roof
+      const [u, l] = TIER_IX[A.tier] < TIER_IX[B.tier] ? [p.a, p.b] : [p.b, p.a], U = ROOMS[u], L = ROOMS[l], du = port(u, p), dl = port(l, p);
+      const yu = offset(U.tier).y - SLAB + 0.05, ym = offset(U.tier).y - SLAB - 1 - (cross.indexOf(p) % 9) * 0.5, yl = offset(L.tier).y + depthOf(L.loc);
+      const pts = [[du[0], yu, du[1]], [du[0], ym, du[1]], [dl[0], ym, du[1]], [dl[0], ym, dl[1]], [dl[0], yl, dl[1]]].map((q) => new THREE.Vector3(...q));
+      objs.push(pipe(pts, p));
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.25 + 0.4 * Math.sqrt(p.strength), 20), new THREE.MeshBasicMaterial({ color: linkColor(p), transparent: true, side: THREE.DoubleSide }));
+      ring.rotation.x = -Math.PI / 2; ring.position.set(dl[0], yl + 0.07, dl[1]); objs.push(ring);
+    }
+    for (const o of objs) { content.add(o); if (visOf(A.tier) === "ghost" && visOf(B.tier) === "ghost") fade(o, GHOST); }
+    linkObjs.push({ a: p.a, b: p.b, objs });
+  }
+}
+
 function links() {
+  if (form === "buildings") return pipes();
   const pairs = pairsOf().filter((p) => visOf(ROOMS[p.a].tier) !== "hidden" && visOf(ROOMS[p.b].tier) !== "hidden");
   // doors: every link that leaves a room by one side gets its own door along that side
   const bySide = new Map();
@@ -559,7 +855,8 @@ function threads() {
     if (c.n < 3 || !ROOMS[c.a] || !ROOMS[c.b]) continue;
     const A = ROOMS[c.a], B = ROOMS[c.b];
     if (visOf(A.tier) === "hidden" || visOf(B.tier) === "hidden") continue;
-    const a = at(A.tier, A.x + A.w * 0.75, A.y + A.h * 0.25, 0.1), b = at(B.tier, B.x + B.w * 0.75, B.y + B.h * 0.25, 0.1);
+    const up = (r) => form === "buildings" ? depthOf(r.loc) : 0;
+    const a = at(A.tier, A.x + A.w * 0.75, A.y + A.h * 0.25, up(A) + 0.1), b = at(B.tier, B.x + B.w * 0.75, B.y + B.h * 0.25, up(B) + 0.1);
     const mid = a.clone().add(b).multiplyScalar(0.5); mid.y = Math.max(a.y, b.y) + 4 + 6 * (c.n / max);
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new THREE.QuadraticBezierCurve3(a, mid, b).getPoints(40)), new THREE.LineDashedMaterial({ color: "#ee7138", dashSize: 0.5, gapSize: 0.4, transparent: true, opacity: 0.85 }));
     line.computeLineDistances(); content.add(line);
@@ -576,9 +873,9 @@ function filePoints(g) {
   for (const r of Object.values(VIEWS[g].rooms)) {
     const fs = r.files.filter((p) => !FILES[p].generated).sort((a, b) => FILES[b].loc - FILES[a].loc);
     const total = fs.reduce((s, p) => s + FILES[p].loc, 0) || 1, d = depthOf(r.loc);
-    let z = -SLAB;
+    let z = form === "pits" ? -SLAB : d;
     for (const p of fs) {
-      const h = (d - SLAB) * FILES[p].loc / total, rand = rnd(hashStr(p) % 2147483646 + 1);
+      const h = (form === "pits" ? d - SLAB : d) * FILES[p].loc / total, rand = rnd(hashStr(p) % 2147483646 + 1);
       out[p] = { tier: r.tier, x: r.x + 0.5 + rand() * (r.w - 1), y: r.y + 0.5 + rand() * (r.h - 1), z: z - h / 2 };
       z -= h;
     }
@@ -644,11 +941,17 @@ function go(rid) {
 
 // ------------------------------------------------------------------ cameras and views
 function bounds() { // the platforms and the pits under them (not the arcs above)
-  const first = offset(TIERS[0].id), last = offset(TIERS[TIERS.length - 1].id);
-  return new THREE.Box3(new THREE.Vector3(first.x + X0, last.y - depthOf(maxLoc) - 1, Y0), new THREE.Vector3(last.x + X1, 1, Y1));
+  const last = offset(TIERS[TIERS.length - 1].id), ps = TIERS.map((t) => PLATFORM[t.id]);
+  const lo = (k) => Math.min(...ps.map((p) => p[k])), hi = (k) => Math.max(...ps.map((p) => p[k]));
+  if (form === "buildings") {
+    const top = Math.max(1, ...ALL_ROOMS.map((r) => offset(r.tier).y + depthOf(r.loc) + 1));
+    return new THREE.Box3(new THREE.Vector3(lo("X0"), last.y - SLAB, lo("Y0")), new THREE.Vector3(hi("X1"), top, hi("Y1")));
+  }
+  return new THREE.Box3(new THREE.Vector3(lo("X0"), last.y - depthOf(maxLoc) - 1, lo("Y0")), new THREE.Vector3(hi("X1"), 1, hi("Y1")));
 }
 function setView(kind, keepTarget) {
   viewKind = kind;
+  for (const m of standing) m.visible = kind === "front";
   const box = bounds(), centre = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
   const target = keepTarget && controls ? controls.target.clone() : centre;
   const W = world.clientWidth, H = world.clientHeight, aspect = W / H, R = size.length() / 2;
@@ -657,7 +960,7 @@ function setView(kind, keepTarget) {
     camera = new THREE.PerspectiveCamera(38, aspect, 0.5, R * 20);
     camera.position.copy(target).add(new THREE.Vector3(0.9, 0.75, 1.25).setLength(R * 2.6));
   } else {
-    const half = kind === "top" ? Math.max(size.x / aspect, size.z) / 2 * 1.15 : kind === "front" ? Math.max(size.x / aspect, size.y) / 2 * 1.3 : R * 0.9;
+    const half = kind === "top" ? Math.max(size.x / aspect, size.z) / 2 * 1.15 : kind === "front" ? Math.max(size.x / aspect, size.y) / 2 * 1.3 : Math.max((size.x + size.z) / Math.SQRT2 / aspect, (size.x + 2 * size.y + size.z) / Math.sqrt(6)) / 2 * 1.06; // axo: the box as seen along (1, 1, 1)
     if (kind === "front" && !keepTarget) target.y += half * 0.14; // the stack a little lower, clear of the title
     camera = new THREE.OrthographicCamera(-half * aspect, half * aspect, half, -half, -R * 20, R * 20);
     camera.position.copy(target).add(kind === "top" ? new THREE.Vector3(0, R * 3, 0.001) : kind === "front" ? new THREE.Vector3(0, 0, R * 3) : new THREE.Vector3(1, 1, 1).setLength(R * 3));
@@ -695,13 +998,13 @@ function loop() {
   // labels: the selected and hovered room first, then the bigger rooms; one that would overlap a label
   // already placed is hidden (zoom in to see it)
   const placed = [];
-  const order = [...labelEls].sort((a, b) => (b.tier ? 2e9 : (b.rid === selected || b.rid === hovered) ? 1e9 : b.rank) - (a.tier ? 2e9 : (a.rid === selected || a.rid === hovered) ? 1e9 : a.rank));
+  const order = [...labelEls].sort((a, b) => ((b.rid === selected || b.rid === hovered) ? 1e9 : b.rank) - ((a.rid === selected || a.rid === hovered) ? 1e9 : a.rank));
   for (const L of order) {
     v.copy(L.p).project(camera);
     const x = (v.x + 1) / 2 * W, y = (1 - v.y) / 2 * H;
     let show = !(v.z > 1 || v.z < -1 || x < -50 || x > W + 50 || y < -20 || y > H + 20);
     if (L.quiet && L.rid !== selected && L.rid !== hovered) show = false;
-    if (show && !L.tier) {
+    if (show) {
       if (!L.w) { L.el.style.display = "block"; L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; }
       const box = [x - L.w / 2, y - L.h / 2, x + L.w / 2, y + L.h / 2];
       if (placed.some((q) => box[0] < q[2] && q[0] < box[2] && box[1] < q[3] && q[1] < box[3])) show = false;
@@ -759,10 +1062,10 @@ function legend() {
     : `<div class="scale"><span>${SCALES[colorBy].lo}<span class="ramp" style="background:linear-gradient(90deg,${warm(0)},${warm(0.6)},${warm(1)})"></span>${SCALES[colorBy].hi}</span></div><div>${SCALES[colorBy].label}</div>`;
   $("#legend").innerHTML = `<details open><summary>Key</summary>
     <div class="sym" style="margin-top:6px">${TIERS.map((t) => `<span title="${esc(t.about)}"><i style="background:${TIER_COLOR[t.id]}"></i>${t.label}</span>`).join("")}</div>
-    <div style="margin-top:6px"><b>Strata</b>: one band per file, as thick as its lines · colour: <b>${{ lang: "language", folder: "folder", churn: "recent changes", dup: "duplication", cx: "complexity" }[colorBy]}</b> · rooms: <b>${GROUP_NAME[grouping].toLowerCase()}</b></div>
+    <div style="margin-top:6px"><b>${form === "pits" ? "Strata</b>: one band per file, as thick" : "Floors</b>: one per file, as high"} as its lines · colour: <b>${{ lang: "language", folder: "folder", churn: "recent changes", dup: "duplication", cx: "complexity" }[colorBy]}</b> · rooms: <b>${GROUP_NAME[grouping].toLowerCase()}</b></div>
     ${strata}
     <div class="sym">
-      <span><i style="background:#7d7279"></i>depends on (corridor; a tube between tiers)</span>
+      <span><i style="background:#7d7279"></i>depends on (${form === "pits" ? "corridor; a tube between tiers" : "pipe"})</span>
       <span><i style="background:#c2432b"></i>both depend on each other</span>
       <span><i style="background:#8f8bb3"></i>only change together (dashed)</span>
       <span><i style="background:#c2432b;border-radius:50%"></i>magic values</span>
@@ -771,7 +1074,7 @@ function legend() {
       <span><i style="background:#ee7138;clip-path:polygon(50% 0,100% 100%,0 100%)"></i>layer violation</span>
       <span><i style="background:none;border-top:2px dashed #c2432b;height:0"></i>rim: dependency cycle</span>
       <span><i style="background:none;border-top:2px dashed #ee7138;height:0"></i>arc: clones</span>
-      <span><i style="background:#f3c6ad"></i>warm glass: hotspot</span>
+      <span><i style="background:#f3c6ad"></i>warm ${form === "pits" ? "glass" : "roof"}: hotspot</span>
     </div></details>`;
 }
 function tabs(id, attr, set) {
@@ -803,6 +1106,15 @@ function setCut(k) {
 })();
 $("#help-btn").addEventListener("click", () => { const open = $("#help").classList.toggle("open"); $("#help-btn").setAttribute("aria-expanded", open); });
 tabs("view-tabs", "v", (v) => setView(v));
+tabs("form-tabs", "f", (f) => {
+  if (f === form) return;
+  if (morph) finishMorph();
+  form = f;
+  const q = new URLSearchParams(location.search);
+  if (f === "buildings") q.set("form", f); else q.delete("form");
+  history.replaceState(null, "", location.pathname + (String(q) ? "?" + q : "") + location.hash);
+  build(); legend(); highlight(null); setView(viewKind);
+});
 document.querySelectorAll("#group-tabs button").forEach((b) => b.addEventListener("click", () => switchGrouping(b.dataset.g)));
 tabs("color-tabs", "c", (c) => { colorBy = c; build(); legend(); highlight(hovered); if (selected) select(selected); needs = true; });
 
@@ -1239,12 +1551,12 @@ function coupling() {
 
 $("#notes").innerHTML = `
 <p><b>Why these.</b> Much of this code was written by AI faster than it can be reviewed. The map does not judge the code; it points at where a reviewer's hour is best spent.</p>
-<p><b>Tiers</b> are detected, not declared: a file that draws UI is presentation; one that serves or calls HTTP, or is a command line, is application; one that uses a database or the file system is data; one that drives another program's API (a CAD host, an IFC toolkit) is integration; the rest is domain. Where the code shows nothing, the path can (a <code>store</code>, a <code>server</code>, a <code>views/</code> folder). A room never spans two tiers, so a component (a folder) appears on every platform it has code on, at the same spot.</p>
+<p><b>Tiers</b> are detected, not declared: a file that draws UI is presentation; one that serves or calls HTTP, or is a command line, is application; one that uses a database or the file system is data; one that drives another program's API (a CAD host, an IFC toolkit) is integration; the rest is domain. Where the code shows nothing, the path can (a <code>store</code>, a <code>server</code>, a <code>views/</code> folder). A room never spans two tiers, so a component (a folder) appears on every platform it has code on, near the same spot.</p>
 <p><b>Hotspots</b> first: code that changes often and is complex is where bugs live (Tornhill). <b>Swallowed errors</b> hide failures. <b>Magic values</b> are decisions nobody named. <b>Duplication</b> is the same logic in several places, which drifts apart.</p>
 <p><b>Dependencies</b> between files are <i>resolved</i> where an indexer covers the language (SCIP: scip-python on Pyright, scip-typescript on the TypeScript compiler): every reference points to the definition it means. Elsewhere they are <i>matched by name</i>: imports resolved to files, and names one file defines that another uses, which can link the wrong file. The <i>Resolved</i> column and each room say which.</p>
 <p><b>Coupling</b>: Ce and Ca count rooms, not references. A room many depend on (low I) should be stable and abstract; <b>D</b> measures how far it is from that. <b>Cycles</b> mean none of the rooms in them can change alone. Changing together without referencing each other (dots in the matrix) is hidden coupling.</p>
 <p><b>Folders vs rooms</b>: the folders are how people filed the code; the rooms are what the code does. Where they agree, the structure holds. A folder split across rooms may be doing two jobs; a room gathering folders may be a module nobody named; a file whose dependencies all live in another folder may be in the wrong place. The <i>agreement</i> is the normalised mutual information of the two groupings (by lines of code), the <i>Fit</i> column the share of a room's code in its biggest counterpart.</p>
-<p><b>Layout</b>: derived anew on every run (fixed seeds, so it stays the same while the code does); <code>[anchors]</code> in the config (<code>codemap.toml</code>) pull a component toward a side. What is mapped is set by <code>include</code> and <code>exclude</code> in the config.</p>`;
+<p><b>Layout</b>: derived anew on every run (fixed seeds, so it stays the same while the code does); rooms that depend on each other attract, spread over the free floor and take the nearest plots of a street grid; a platform's side is a multiple of 8, the smallest that leaves most of its floor free; <code>[anchors]</code> in the config (<code>codemap.toml</code>) pull a component toward a side. What is mapped is set by <code>include</code> and <code>exclude</code> in the config.</p>`;
 $("#footer").textContent = `generated ${DATA.generated} from ${DATA.branch} @ ${DATA.commit} by codemap`;
 
 const params = new URLSearchParams(location.search);
@@ -1253,7 +1565,7 @@ const fromHash = decodeURIComponent(location.hash.slice(1));
 if (params.get("rooms") === "folder" || viewOf(fromHash) === "folder" || viewOf(params.get("classes")) === "folder") useView("folder");
 const startView = ["top", "axo", "persp", "front"].includes(params.get("view")) ? params.get("view") : "axo";
 if (ROOMS[params.get("classes")]) setTimeout(() => openClasses(params.get("classes")), 0);
-for (const [id, attr, v] of [["view-tabs", "v", startView], ["color-tabs", "c", colorBy], ["group-tabs", "g", grouping]])
+for (const [id, attr, v] of [["view-tabs", "v", startView], ["color-tabs", "c", colorBy], ["group-tabs", "g", grouping], ["form-tabs", "f", form]])
   document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute("aria-pressed", b.dataset[attr] === v));
 const cutParam = TIERS.findIndex((t) => t.id === params.get("cut"));
 if (cutParam >= 0) cut = cutParam;

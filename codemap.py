@@ -9,10 +9,11 @@
 Reads every source file (tree-sitter: Python, C#, C++, TypeScript, JavaScript; no docs, no tests), sorts each file
 into a classic architectural tier by what its code uses (presentation, application, domain, data, integration),
 groups the files of a tier into rooms twice: by how they depend on each other and change together, and by the
-folders they are filed in; measures how far the two agree. Places the rooms on their tier's platform (a component
-sits at the same spot on every platform and in both views; anchoring hints in the config pull a component toward a
-side), measures each room (size, complexity, coupling, duplication, magic values, swallowed errors, hotspots) and
-writes one static HTML page (three.js and ELK, embedded). Everything is derived anew on each run, with fixed seeds.
+folders they are filed in; measures how far the two agree. Places the rooms on their tier's platform (sized in steps
+by what is on it; a component sits near the same spot on every platform and in both views; anchoring hints in the
+config pull a component toward a side), measures each room (size, complexity, coupling, duplication, magic values,
+swallowed errors, hotspots) and writes one static HTML page (three.js and ELK, embedded). Everything is derived anew
+on each run, with fixed seeds.
 Nothing in here knows about one repository: that is the config.
 """
 
@@ -32,6 +33,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import networkx as nx
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import precise  # noqa: E402
@@ -682,13 +684,308 @@ def place_folders(rooms: dict, cpos: dict) -> None:
                 rooms[rid].update(x=ox + local[rid][0], y=oy + local[rid][1], w=sizes[rid][0], h=sizes[rid][1])
 
 
-def normalise(*views: dict) -> None:
-    """Shift all views alike, so the platforms start at 3 and both views share their coordinates."""
-    every = [r for rooms in views for r in rooms.values()]
-    mx, my = min(r["x"] for r in every), min(r["y"] for r in every)
-    for r in every:
-        r["x"] -= mx - 3
-        r["y"] -= my - 3
+# Platforms come in steps, a tier's the smallest that leaves enough floor free (and everything fits on), so a platform
+# keeps its size while the code changes a little, and its size says how much is on its tier.
+STEP = 8  # a platform's side is a multiple of this
+EDGE = 3  # free floor between a room and the platform's edge
+SMALLEST = 16  # the side of the smallest platform; the tiers' names are lettered to fit it, the same on every platform
+TITLE = 4  # the strip along the front edge kept free for the tier's name
+FILL = 0.18  # the share of a platform's floor its rooms may open, at most
+DRIFT = 0.12  # how far a tier's rooms may be, on average, from the spots they should stand at (of the widest platform)
+ROOM_GAP, WING_GAP = 3, 5
+
+
+def spread(rooms: dict, frooms: dict) -> dict[str, dict[str, int]]:
+    """Rooms over the whole of their platform, not huddled in its middle: the layout so far is stretched over the
+    platform, then each room (by folders: each wing, as a block) drifts to the middle of the free floor around it,
+    held back by a pull to its spot. The fullest tier goes first; on the others a folder wants the spot it has there,
+    so it stays the same one on every platform. Returns the platforms (one per tier, for both views)."""
+    units: dict[str, dict[str, dict[str, tuple]]] = defaultdict(dict)  # tier, view, unit: x, y, w, h, its rooms, comp
+    for view, rs in (("folder", frooms), ("room", rooms)):
+        by: dict[tuple[str, str], list[str]] = defaultdict(list)
+        for rid in sorted(rs):
+            by[rs[rid]["tier"], rs[rid]["comp"] if view == "folder" else rid].append(rid)
+        for (tid, u), ids in by.items():
+            x, y = min(rs[i]["x"] for i in ids), min(rs[i]["y"] for i in ids)
+            w, h = max(rs[i]["x"] + rs[i]["w"] for i in ids) - x, max(rs[i]["y"] + rs[i]["h"] for i in ids) - y
+            comp = u if view == "folder" else Counter(component(f) for f in rs[u]["files"]).most_common(1)[0][0]
+            units[tid].setdefault(view, {})[u] = (x, y, w, h, [rs[i] for i in ids], comp)
+
+    def floor(tid: str) -> int:  # what the rooms open, in the view where it is more
+        return max(sum(r["w"] * r["h"] for u in us.values() for r in u[4]) for us in units[tid].values())
+
+    every = [r for rs in (rooms, frooms) for r in rs.values()]
+    span = [[r[a] + r[b] / 2 for r in every] for a, b in (("x", "w"), ("y", "h"))]
+
+    def spots(us: dict, side: int) -> dict[str, tuple[float, float]]:  # the layout so far, stretched over a platform
+        def stretch(v: float, c: list[float]) -> float:
+            return side / 2 + (v - (min(c) + max(c)) / 2) / max(1, max(c) - min(c)) * (side - 4 * EDGE)
+
+        return {u: (stretch(x + w / 2, span[0]), stretch(y + h / 2, span[1])) for u, (x, y, w, h, *_) in us.items()}
+
+    platforms: dict[str, dict[str, int]] = {}
+    widest, home = 0, {}  # the first platform's side, and where each folder stands on it
+    for tid in sorted(units, key=lambda t: (-floor(t), t)):
+        views, first = units[tid], not platforms
+        side = max(SMALLEST, math.ceil(math.sqrt(floor(tid) / FILL) / STEP) * STEP)
+        while True:
+            frame = side if first else widest
+            want = {view: spots(us, frame) for view, us in views.items()}
+            if not first:
+                here = dict(want["folder"])
+                for view, us in views.items():
+                    for u, (*_, comp) in us.items():
+                        if comp in home and comp in here:  # moved as its folder moves to its spot
+                            want[view][u] = tuple(want[view][u][i] + home[comp][i] - here[comp][i] for i in (0, 1))
+            corner = []
+            for i in (0, 1):
+                c = [p[i] for ps in want.values() for p in ps.values()]
+                at = (min(c) + max(c)) / 2 - side / 2
+                corner.append(round(max(0, min(frame - side, at)) if side < frame else (frame - side) / 2))
+            got = {
+                view: _spread_on(us, want[view], corner, side, WING_GAP if view == "folder" else ROOM_GAP, first)
+                for view, us in views.items()
+            }
+            if None not in got.values():
+                off = [
+                    math.dist(want[view][u], (x + views[view][u][2] / 2, y + views[view][u][3] / 2))
+                    for view, ps in got.items()
+                    for u, (x, y) in ps.items()
+                ]
+                if first or side >= widest or sum(off) / len(off) <= DRIFT * widest:
+                    break
+            side += STEP
+        platforms[tid] = {"x": corner[0], "y": corner[1], "side": side}
+        if first:
+            widest = side
+            wings = views["folder"]
+            home = {u: (x + wings[u][2] / 2, y + wings[u][3] / 2) for u, (x, y) in got["folder"].items()}
+        for view, ps in got.items():
+            for u, (x, y) in ps.items():
+                for r in views[view][u][4]:
+                    r["x"], r["y"] = r["x"] + x - views[view][u][0], r["y"] + y - views[view][u][1]
+    return platforms
+
+
+def _spread_on(us: dict, want: dict, corner: list[int], side: int, gap: int, first: bool) -> dict | None:
+    """The units' corners on a platform, each near the spot it wants and in the middle of the floor around it, ``gap``
+    apart; None where they do not fit."""
+    ids = sorted(us)
+    size = np.array([us[u][2:4] for u in ids], dtype=float)
+    half, lo = size / 2, np.array(corner, dtype=float) + EDGE
+    hi = np.array([corner[0] + side - EDGE, corner[1] + side - TITLE], dtype=float)
+    if (size > hi - lo).any():
+        return None
+    goal = np.array([want[u] for u in ids], dtype=float)
+    pos = np.clip(goal, lo + half, hi - half)
+    xs, ys = (np.arange(corner[i] + 1, hi[i] + EDGE, 2, dtype=float) for i in (0, 1))  # the floor, less the title strip
+    grid = np.stack(np.meshgrid(xs, ys, indexing="ij"), axis=-1).reshape(-1, 2)
+    pull = 0.12 if first else 0.3  # off the fullest tier, standing at the folder's spot counts for more
+
+    def apart(rounds: int) -> None:
+        for _ in range(rounds):
+            moved = False
+            for i in range(len(ids)):
+                for j in range(i + 1, len(ids)):
+                    over = half[i] + half[j] + gap + 1 - np.abs(pos[i] - pos[j])  # 1: they are rounded in the end
+                    if (over > 1e-6).all():
+                        k = 0 if over[0] < over[1] else 1
+                        push = over[k] / 2 * (1 if pos[i][k] >= pos[j][k] else -1)
+                        pos[i][k] += push
+                        pos[j][k] -= push
+                        moved = True
+            np.clip(pos, lo + half, hi - half, out=pos)
+            if not moved:
+                return
+
+    for _ in range(80):
+        if len(ids) > 2:
+            away = np.maximum(0, np.abs(grid[:, None, :] - pos[None]) - half[None])
+            near = np.argmin((away**2).sum(axis=2), axis=1)
+            for k in range(len(ids)):
+                mine = grid[near == k]
+                if len(mine):
+                    pos[k] += 0.3 * (mine.mean(axis=0) - pos[k])
+        pos += pull * (goal - pos)
+        np.clip(pos, lo + half, hi - half, out=pos)
+        apart(4)
+    apart(400)
+    at = np.rint(pos - half)
+    if (at < lo).any() or (at + size > hi).any():
+        return None
+    for i in range(len(ids)):
+        for j in range(i + 1, len(ids)):
+            if (at[i] < at[j] + size[j] + gap).all() and (at[j] < at[i] + size[i] + gap).all():
+                return None
+    return {u: (int(at[k][0]), int(at[k][1])) for k, u in enumerate(ids)}
+
+
+# Rooms stand on the plots of a street grid, one per view, the same on every platform (its lines meet across tiers).
+PLOTS = 0.7  # the share of the plots the fullest tier may take: the rest stays open, so that clusters keep apart
+TOGETHER = 0.8  # how much standing by the rooms it is linked to counts, against standing at the spot it has
+
+
+def streets(rooms: dict, frooms: dict, links: dict, platforms: dict) -> tuple[dict, dict[str, dict]]:
+    """The rooms moved onto a grid of streets, close to where they are: each to a plot (a big room to several) near its
+    spot and near the rooms it is linked to (by folders: the rooms of its component), so the clusters stay, in order.
+    The grid is the coarsest that leaves enough plots open. Returns the platforms, fitted, and each view's grid."""
+    mates = {
+        (a, b): 1.0
+        for a in frooms
+        for b in frooms
+        if a < b and frooms[a]["comp"] == frooms[b]["comp"] and frooms[a]["tier"] == frooms[b]["tier"]
+    }
+    views = {"room": (rooms, links), "folder": (frooms, mates)}
+    tall = max((p["side"] for p in platforms.values()), default=SMALLEST)
+    side = tall
+    while True:
+        put = {v: _grid(rs, ls, platforms, side, side / tall) for v, (rs, ls) in views.items()}
+        if all(put.values()):
+            break
+        side += STEP
+    grids = {}
+    for v, (rs, _) in views.items():
+        grids[v], plots = put[v]
+        g = grids[v]
+        for rid, (i, j, kx, ky) in plots.items():
+            r = rs[rid]
+            r["plot"] = [i, j, kx, ky]
+            r["x"] = round(g["x"] + (i + kx / 2) * g["px"] - r["w"] / 2)
+            r["y"] = round(g["y"] + (j + ky / 2) * g["py"] - r["h"] / 2)
+    out = {}
+    for tid in platforms:  # a room alone on its tier, in both views, stands at one spot
+        alone = [[r for r in rs.values() if r["tier"] == tid] for rs in (rooms, frooms)]
+        if all(len(a) == 1 for a in alone):
+            (r,), (f,) = alone
+            r["x"], r["y"] = f["x"] + (f["w"] - r["w"]) // 2, f["y"] + (f["h"] - r["h"]) // 2
+    for tid in platforms:  # a platform reaches over its rooms' plots (over the room itself where it is the only one)
+        box = [math.inf, math.inf, -math.inf, -math.inf]
+        for v, (rs, _) in views.items():
+            g, here = grids[v], [r for r in rs.values() if r["tier"] == tid]
+            for r in here:
+                i, j, kx, ky = r["plot"]
+                b = [r["x"] - EDGE, r["y"] - EDGE, r["x"] + r["w"] + EDGE, r["y"] + r["h"] + TITLE]
+                if len(here) > 1:  # and over the streets around them
+                    lx, ly = g["x"] + i * g["px"] - 2, g["y"] + j * g["py"] - 2
+                    hx, hy = g["x"] + (i + kx) * g["px"] + 2, g["y"] + (j + ky) * g["py"] + TITLE
+                    b = [min(b[0], lx), min(b[1], ly), max(b[2], hx), max(b[3], hy)]
+                box = [min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3])]
+        need = max(box[2] - box[0], box[3] - box[1])
+        s = max(SMALLEST, math.ceil(need / STEP - 1e-9) * STEP)
+        x, y = (round((box[k] + box[k + 2] - s) / 2) for k in (0, 1))
+        x, y = min(x, math.floor(box[0])), min(y, math.floor(box[1]))
+        x, y = max(x, math.ceil(box[2]) - s), max(y, math.ceil(box[3]) - s)
+        out[tid] = {"x": x, "y": y, "side": s}
+    return out, grids
+
+
+def _grid(rs: dict, links: dict, platforms: dict, side: int, scale: float) -> tuple[dict, dict] | None:
+    """The coarsest grid on a platform of this side that takes the rooms of every tier, and each room's plots
+    (column, row, columns, rows); None where there is none."""
+    tiers: dict[str, list[str]] = defaultdict(list)
+    for rid in sorted(rs):
+        tiers[rs[rid]["tier"]].append(rid)
+    ux, uy = side - 2 * EDGE, side - EDGE - TITLE
+    most = max(map(len, tiers.values()), default=1)
+    for nc, nr in sorted(
+        ((a, b) for a in range(2, 25) for b in range(2, 25) if abs(a - b) <= 1 and a * b >= most),
+        key=lambda n: (n[0] * n[1], n),
+    ):
+        px, py = ux / nc, uy / nr
+        if min(px, py) < 3 + ROOM_GAP:
+            break
+        size = {u: (math.ceil((r["w"] + ROOM_GAP) / px), math.ceil((r["h"] + ROOM_GAP) / py)) for u, r in rs.items()}
+        need = [sum(size[u][0] * size[u][1] for u in ids) for ids in tiers.values() if len(ids) > 1]
+        if any(kx > nc or ky > nr for kx, ky in size.values()) or max(need, default=0) > PLOTS * nc * nr:
+            continue
+        goal = {
+            u: (((r["x"] + r["w"] / 2) * scale - EDGE) / px, ((r["y"] + r["h"] / 2) * scale - EDGE) / py)
+            for u, r in rs.items()
+        }
+        plots: dict[str, tuple[int, int, int, int]] = {}
+        for tid, ids in tiers.items():
+            q, got = platforms[tid], None
+            lo = [round((q[k] * scale - EDGE) / p) for k, p in (("x", px), ("y", py))]
+            hi = [round(((q[k] + q["side"]) * scale - EDGE) / p) for k, p in (("x", px), ("y", py))]
+            for more in range(max(nc, nr)):  # on the plots of its platform, or as few more around them as it takes
+                x0, y0, x1, y1 = lo[0] - more, lo[1] - more, hi[0] + more, hi[1] + more
+                lots = [(i, j) for j in range(max(0, y0), min(nr, y1)) for i in range(max(0, x0), min(nc, x1))]
+                got = _settle(ids, size, goal, links, lots)
+                if got is not None:
+                    break
+            if got is None:
+                break
+            plots |= got
+        else:
+            return {"x": EDGE, "y": EDGE, "px": round(px, 4), "py": round(py, 4), "nx": nc, "ny": nr}, plots
+    return None
+
+
+def _settle(ids: list[str], size: dict, goal: dict, links: dict, lots: list) -> dict | None:
+    """Plots, out of these, for one tier's rooms: the biggest first, each nearest its spot, then moved and swapped while
+    that brings the rooms, in sum, nearer to their spots and to the rooms they are linked to."""
+    pull: dict[str, dict[str, float]] = {u: {} for u in ids}
+    for (a, b), w in sorted(links.items()):
+        if a in pull and b in pull and w > 0:
+            pull[a][b] = pull[a].get(b, 0) + math.sqrt(w)
+            pull[b][a] = pull[b].get(a, 0) + math.sqrt(w)
+    mean = sum(sum(p.values()) for p in pull.values()) / max(1, len(ids)) or 1
+    may = set(lots)
+    at: dict[str, tuple[int, int]] = {}
+    taken: dict[tuple[int, int], str] = {}
+
+    def cells(u: str, p: tuple[int, int]) -> list[tuple[int, int]]:
+        return [(p[0] + a, p[1] + b) for a in range(size[u][0]) for b in range(size[u][1])]
+
+    def mid(u: str, p: tuple[int, int]) -> tuple[float, float]:
+        return p[0] + size[u][0] / 2, p[1] + size[u][1] / 2
+
+    def free(u: str, p: tuple[int, int]) -> bool:
+        return all(c in may and taken.get(c, u) == u for c in cells(u, p))
+
+    def cost(u: str, p: tuple[int, int], other: str = "", q: tuple[int, int] = (0, 0)) -> float:
+        x, y = mid(u, p)
+        c = (x - goal[u][0]) ** 2 + (y - goal[u][1]) ** 2
+        for v, w in pull[u].items():
+            if v in at:
+                vx, vy = mid(v, q if v == other else at[v])
+                c += TOGETHER * w / mean * (abs(x - vx) + abs(y - vy))
+        return c
+
+    def move(moves: dict[str, tuple[int, int]]) -> None:
+        for u in moves:
+            for c in cells(u, at[u]) if u in at else ():
+                taken.pop(c, None)
+        for u, p in moves.items():
+            at[u] = p
+            for c in cells(u, p):
+                taken[c] = u
+
+    for u in sorted(ids, key=lambda u: (-size[u][0] * size[u][1], u)):
+        spots = [p for p in lots if free(u, p)]
+        if not spots:
+            return None
+        move({u: min(spots, key=lambda p: (cost(u, p), p))})
+    for _ in range(40):
+        better = False
+        for u in ids:
+            now = cost(u, at[u])
+            best, gain = None, 1e-9
+            for p in lots:
+                if p != at[u] and free(u, p) and now - cost(u, p) > gain:
+                    best, gain = {u: p}, now - cost(u, p)
+            for v in ids:
+                if v != u and size[v] == size[u]:
+                    p, q = at[u], at[v]
+                    g = now + cost(v, q) - cost(u, q, v, p) - cost(v, p, u, q)
+                    if g > gain:
+                        best, gain = {u: q, v: p}, g
+            if best:
+                move(best)
+                better = True
+        if not better:
+            break
+    return {u: (*at[u], *size[u]) for u in ids}
 
 
 def room_links(member: dict, deps: dict, co: dict) -> dict:
@@ -781,6 +1078,7 @@ def metrics(root, cfg, recs, texts, member, rooms, tiers, deps, co, recent, last
             "y": r["y"],
             "w": r["w"],
             "h": r["h"],
+            "plot": r["plot"],
             "files": sorted(f["path"] for f in fs),
             "loc": loc,
             "functions": funcs,
@@ -1031,9 +1329,10 @@ def main(argv: list[str] | None = None) -> int:
     rooms, member = make_rooms(recs, tiers, deps, co, cfg["rooms"])
     frooms, fmember = folder_rooms(recs, tiers, main_package(recs))
     cpos, scale = component_places(rooms, deps, cfg.get("anchors", {}))
-    place(rooms, {k: v["weight"] for k, v in room_links(member, deps, co).items()}, cpos, scale)
+    weights = {k: v["weight"] for k, v in room_links(member, deps, co).items()}
+    place(rooms, weights, cpos, scale)
     place_folders(frooms, cpos)
-    normalise(rooms, frooms)
+    platforms, grids = streets(rooms, frooms, weights, spread(rooms, frooms))
     notes = [f"{len(cfg.get('anchors', {}))} anchoring hints", *index_notes]
     total = sum(r.loc for r in recs.values()) or 1
     resolved = round(sum(recs[p].loc for p in cov) / total, 3)
@@ -1074,6 +1373,8 @@ def main(argv: list[str] | None = None) -> int:
             "room": view(room_out, links, clone_links, cycles, files_out),
             "folder": view(froom_out, flinks, fclone_links, fcycles, ffiles),
         },
+        "platforms": platforms,
+        "streets": grids,
         "fit": fitted,
         "precision": {"resolved": resolved, "tools": sorted(set(ix.tools)) if ix else []},
         "files": files_out,

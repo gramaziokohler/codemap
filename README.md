@@ -5,7 +5,8 @@ serve.
 
 - **Platforms** are the classic tiers (presentation, application, domain, data, integration), stacked. Each file is
   sorted into one by what its code uses (UI, HTTP or a command line, nothing but logic, storage, another program's
-  API); where the code shows nothing, its path decides; `[tiers]` in the config overrides both.
+  API); where the code shows nothing, its path decides; `[tiers]` in the config overrides both. A platform's size comes
+  in steps and grows with the files on it.
 - **Rooms**, two ways. *By dependencies*: files of a tier that depend on each other and change together (Louvain).
   *By folders*: the folders the code is filed in, a big folder split into its sub-folders. Switching moves every file
   from one to the other; the panel says how far the two agree and where they do not.
